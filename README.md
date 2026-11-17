@@ -132,6 +132,16 @@ inflated by translated benchmarks.
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
 
+## Limitations
+
+- GPU serving covers Qwen2.5-7B (fp16, AWQ-int4) and a partial Qwen2.5-14B run on one V100.
+  The planned engine comparison and multi-model GPU matrix were dropped: the GPU was shared
+  with a production service, and the benchmark never runs at its expense.
+- Quality is measured on CPU with llama.cpp (`b12470`), greedy decoding, one run per configuration.
+  GGUF files are built from the original weights with that same release.
+- 250 paired items give 95% intervals of about ±4 points; a smaller quantization tax cannot be excluded.
+- Reading, knowledge and math use translated benchmarks; see the errata above.
+
 ## Reproduce
 
 ```bash
