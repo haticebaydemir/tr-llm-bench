@@ -95,8 +95,39 @@ Quantization tax over 250 paired items (percentage points, positive = Turkish lo
   by 17 points in reading, 27.5 in knowledge and 17.5 in math. Quantization is not
   the problem; the base model's Turkish is.
 - Instruction following and JSON extraction show no gap.
-- 38 items are wrong in Turkish but right in English at fp16; these are being
-  reviewed by hand to separate model errors from translation errors in the datasets.
+
+### How much of the gap is the benchmark's fault?
+
+All 38 items that fp16 got wrong in Turkish but right in English were reviewed by hand:
+**30 are genuine model errors, 8 are translation errors** that change the meaning of
+the Turkish item, and 0 are scoring errors. Examples of meaning-changing errors:
+
+- Belebele-TR: a "not true" option was negated in translation, so it became true;
+  "rotation" became "orbit" in the passage but "rotation" in the options;
+  "airline" became "airport" in the options.
+- Global-MMLU-TR: "EXCEPT" was dropped, reversing the question; "H2O(s)" (solid)
+  became "H2O(lar)" (a Turkish plural suffix).
+- GSM8K-TR: "200 taps per minute with each foot" became ambiguous ("with both feet").
+
+Turkish–English gap at fp16 after removing those 8 items:
+
+| Category | Raw gap | Corrected gap |
+|---|---|---|
+| Reading | 16.7 pts | 9.0 pts |
+| Knowledge | 27.5 pts | 23.7 pts |
+| Math | 17.5 pts | 15.4 pts |
+
+**About half of the reading gap comes from Belebele-TR translation quality, not from the
+model.** The knowledge and math gaps are mostly real. Several other items contain term
+errors that do not change the answer (e.g. "24 hours" → "24 seconds",
+"discount rate" → "indirim oranı" instead of "reeskont oranı").
+
+## Summary
+
+For a Turkish user on Qwen2.5-7B: the engine serves Turkish as fast as English in tokens,
+but the tokenizer delivers ~38% less content per second; quantization down to Q4_K_M costs
+Turkish no more than English; and the remaining quality gap lies in the base model, partly
+inflated by translated benchmarks.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
