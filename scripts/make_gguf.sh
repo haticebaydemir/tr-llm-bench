@@ -19,8 +19,9 @@ SRC=/disk3/trbench/hf_src/$NAME
 [ -d "$LCPP" ] || git clone -q --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp "$LCPP"
 if [ ! -x "$LCPP/build/bin/llama-quantize" ] || [ ! -x "$LCPP/build/bin/llama-server" ]; then
   echo "[gguf] llama.cpp $LLAMA_TAG derleniyor $(date)"
+  rm -rf "$LCPP/build"   # yarim kalmis derleme/indirme artiklari
   $LOW cmake -S "$LCPP" -B "$LCPP/build" -DCMAKE_BUILD_TYPE=Release \
-      -DGGML_CUDA=OFF -DLLAMA_CURL=OFF -DGGML_NATIVE=ON > "$L/llama_build.log" 2>&1
+      -DGGML_CUDA=OFF -DLLAMA_CURL=OFF -DGGML_NATIVE=ON -DLLAMA_USE_PREBUILT_UI=OFF > "$L/llama_build.log" 2>&1
   $LOW cmake --build "$LCPP/build" -j 16 --target llama-server llama-quantize >> "$L/llama_build.log" 2>&1
 fi
 
