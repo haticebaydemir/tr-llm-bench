@@ -6,6 +6,7 @@ llama.cpp ise scripts/phase4_cpu.sh icinde SABIT bir surumden derlenir
 
 Kullanim (sunucuda):
   python -m trbench.eval.gguf Qwen/Qwen2.5-7B-Instruct-GGUF q4_k_m
+  python -m trbench.eval.gguf /disk3/trbench/gguf/trendyol-7b q4_k_m   # kendi urettigimiz
 """
 
 from __future__ import annotations
@@ -31,7 +32,17 @@ def first_part(paths: list[str]) -> str:
     return next((p for p in paths if "00001-of" in p), paths[0])
 
 
+def local_model(folder: Path, quant: str) -> Path:
+    """scripts/make_gguf.sh ile bizim urettigimiz dosyalar: <ad>-<quant>.gguf"""
+    parts = pick_files(sorted(p.name for p in folder.iterdir()), quant)
+    if not parts:
+        raise SystemExit(f"{folder}: '{quant}' bulunamadi")
+    return folder / first_part(parts)
+
+
 def download_model(repo: str, quant: str) -> Path:
+    if Path(repo).is_dir():
+        return local_model(Path(repo), quant)
     from huggingface_hub import HfApi, hf_hub_download
 
     parts = pick_files(HfApi().list_repo_files(repo), quant)

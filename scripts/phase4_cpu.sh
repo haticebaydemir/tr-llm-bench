@@ -27,7 +27,7 @@ if [ ! -x "$SERVER" ]; then
   git clone -q --depth 1 --branch "$LLAMA_TAG" https://github.com/ggml-org/llama.cpp "$LCPP"
   $LOW cmake -S "$LCPP" -B "$LCPP/build" -DCMAKE_BUILD_TYPE=Release \
       -DGGML_CUDA=OFF -DLLAMA_CURL=OFF -DGGML_NATIVE=ON > "$L/llama_build.log" 2>&1
-  $LOW cmake --build "$LCPP/build" -j 16 --target llama-server >> "$L/llama_build.log" 2>&1
+  $LOW cmake --build "$LCPP/build" -j 16 --target llama-server llama-quantize >> "$L/llama_build.log" 2>&1
 fi
 echo "[phase4] llama.cpp: $LLAMA_TAG $SERVER"
 

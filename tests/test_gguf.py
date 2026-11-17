@@ -19,3 +19,11 @@ def test_pick_split_and_not_similar_quant():
 def test_first_part():
     assert first_part(pick_files(FILES, "q4_k_m")).endswith("00001-of-00002.gguf")
     assert first_part(["a-q8_0.gguf"]) == "a-q8_0.gguf"
+
+
+def test_local_model_picks_our_own_files(tmp_path):
+    from trbench.eval.gguf import download_model
+    for q in ("fp16", "q8_0", "q4_k_m"):
+        (tmp_path / f"trendyol-7b-{q}.gguf").write_text("x")
+    assert download_model(str(tmp_path), "q8_0").name == "trendyol-7b-q8_0.gguf"
+    assert download_model(str(tmp_path), "fp16").name == "trendyol-7b-fp16.gguf"
