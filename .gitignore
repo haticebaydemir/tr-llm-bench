@@ -18,3 +18,4 @@ data/eval/eval_set.jsonl
 results_yedek/
 inceleme.md
 *.tar.gz
+data/hf/*.jsonl
