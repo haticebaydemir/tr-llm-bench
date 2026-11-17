@@ -1,0 +1,21 @@
+# Faz 3: performans matrisi. Tek GPU (2), V100 32 GB, vLLM 1.5.0 (sunucudaki V100 derlemesi).
+#
+# 16 Kasim olayi: 0.80 ayarinda GPU 2 toplami 29.6 GB oldu, paylasilan servisin kendi alarmi
+# (toplam > 20 GB) iki kez caldi. Yeni kural: GPU 2 toplami plan olarak <= 16 GB
+# (config.py), guard 17 GB'ta durdurur. Bu butceye sadece 7-8B 4-bit modeller sigar.
+#
+# 16 Kasim'da (eski 0.80 ayariyla) olculenler results/phase3.jsonl'da korunuyor:
+#   qwen2.5-7b fp16 (24 kosu), qwen2.5-7b awq-int4 (24), qwen2.5-14b awq-int4 (13, yarim),
+#   qwen2.5-7b gptq-int8: engine_failed (SM70 Marlin bias desteklemiyor).
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.25
+max_model_len: 4096
+max_tokens: 256
+max_num_seqs: 32
+concurrency: [1, 4, 16, 32]
+langs: [tr, en]
+repeats: 3
+
+models:
+  - {name: llama-3.1-8b, quant: awq-int4, params_b: 8.0, repo: hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4}

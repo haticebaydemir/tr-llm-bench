@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+results/*
+!results/.gitkeep
+*.safetensors
+*.gguf
+.env
+*.egg-info/
+# yerel kurulum scriptleri
+kurulum.py
+adim_*.py
+# FLORES+ kapili veri: asla commit edilmez
+data/flores/
+data/eval/eval_set.jsonl
