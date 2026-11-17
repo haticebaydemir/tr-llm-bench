@@ -38,7 +38,25 @@ Load tests use fixed output length (`min_tokens` + `ignore_eos`) and streaming T
 Raw tok/s is reported together with **content throughput = tok/s ÷ tax**,
 because Turkish tokens carry less content than English ones.
 
-*Results table: TODO*
+Qwen2.5-7B-Instruct, vLLM, one V100 32 GB, 256 output tokens per request, median of 3 repeats.
+**Content tok/s = TR tok/s ÷ 1.62** (Qwen's tokenizer tax), i.e. how much English-equivalent content Turkish users get.
+
+| Quant | Concurrency | EN tok/s | TR tok/s | TR content tok/s | TTFT p50 EN / TR (ms) |
+|---|---|---|---|---|---|
+| fp16 | 1 | 15.5 | 15.6 | 9.6 | 84 / 84 |
+| fp16 | 4 | 61.0 | 60.6 | 37.4 | 217 / 196 |
+| fp16 | 16 | 185.5 | 185.5 | 114.5 | 412 / 404 |
+| fp16 | 32 | 273.8 | 265.0 | 163.6 | 540 / 602 |
+| AWQ-int4 | 1 | 32.6 | 31.6 | 19.5 | 57 / 60 |
+| AWQ-int4 | 4 | 124.6 | 122.7 | 75.7 | 117 / 125 |
+| AWQ-int4 | 16 | 352.4 | 315.5 | 194.7 | 261 / 252 |
+| AWQ-int4 | 32 | 449.9 | 431.0 | 266.0 | 529 / 554 |
+
+- **The engine is language-neutral, the tokenizer is not.** Raw tok/s is almost identical
+  for Turkish and English, yet Turkish users get ~38% less content per second.
+- **AWQ-int4 roughly doubles throughput** over fp16 on V100 at every concurrency level
+  (single-stream decoding is memory-bound, so 4× smaller weights pay off).
+- Qwen2.5-14B AWQ-int4 (Turkish only, partial run): 17.7 tok/s at c=1, 203 tok/s at c=32.
 
 Finding: GPTQ-int8 does not run on V100 (SM70) for models with attention bias
 (e.g. Qwen), because the Marlin kernel does not support bias.
