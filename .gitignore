@@ -15,3 +15,5 @@ adim_*.py
 # FLORES+ kapili veri: asla commit edilmez
 data/flores/
 data/eval/eval_set.jsonl
+results_yedek/
+inceleme.md
