@@ -17,3 +17,4 @@ data/flores/
 data/eval/eval_set.jsonl
 results_yedek/
 inceleme.md
+*.tar.gz
