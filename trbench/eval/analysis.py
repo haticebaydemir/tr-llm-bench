@@ -23,6 +23,18 @@ RESULTS = Path("results/phase4.jsonl")
 PAIRED = ("reading", "knowledge", "math", "instruction", "json")
 BASE = "fp16"
 
+# 17 Kasim elle inceleme: Turkce ceviri sorunun anlamini degistiriyor (bkz. README).
+TRANSLATION_ERRORS = frozenset({
+    "reading/https://en.wikinews.org/wiki/Building_collapses_in_Mecca_at_eve_of_Hajj_pillgrimage#1",
+    "reading/https://en.wikinews.org/wiki/Sun%27s_mood_swings_not_so_strange_after_all,_say_scientists#1",
+    "reading/https://en.wikivoyage.org/wiki/Aggregators#1",
+    "reading/https://en.wikivoyage.org/wiki/Noum%C3%A9a#2",
+    "reading/https://en.wikinews.org/wiki/The_Onion:_An_interview_with_%27America%27s_Finest_News_Source%27#2",
+    "knowledge/high_school_biology/test/211",
+    "knowledge/college_medicine/test/72",
+    "math/gsm8k-test-721",
+})
+
 
 def load(path: Path = RESULTS) -> list[dict]:
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
@@ -74,11 +86,58 @@ def tr_wrong_en_right(rows: list[dict], label: str) -> list[str]:
     return sorted(i for i, d in by.items() if d.get("tr") is False and d.get("en") is True)
 
 
+def models(rows: list[dict]) -> list[str]:
+    return sorted({r["label"].split("/", 1)[0] for r in rows})
+
+
+def gap(t: dict, cat: str, exclude: frozenset = frozenset()) -> tuple[float, float] | None:
+    """(TR dogruluk, EN dogruluk) tek kategori; iki dilde de olculen sorular."""
+    ids = sorted({i for (i, lg) in t if lg == "tr" and i.startswith(cat + "/")
+                  and (i, "en") in t and i not in exclude})
+    if not ids:
+        return None
+    return _acc(t, ids, "tr"), _acc(t, ids, "en")
+
+
+def summary_md(rows: list[dict], clean: bool = False) -> str:
+    """Butun modeller tek tabloda (README icin markdown)."""
+    ex = TRANSLATION_ERRORS if clean else frozenset()
+    out = ["| Model | " + " | ".join(f"{c} TR/EN" for c in PAIRED)
+           + " | Morph. TR | Q8 tax [95% CI] | Q4 tax [95% CI] |",
+           "|---" * (len(PAIRED) + 4) + "|"]
+    for m in models(rows):
+        tab = table(rows, m)
+        if BASE not in tab:
+            continue
+        cells = []
+        for c in PAIRED:
+            g = gap(tab[BASE], c, ex)
+            cells.append("–" if g is None else f"{100*g[0]:.0f} / {100*g[1]:.0f}")
+        mo = [v for (i, _), v in tab[BASE].items() if i.startswith("morphology/")]
+        cells.append(f"{100*sum(mo)/len(mo):.0f}" if mo else "–")
+        for q in ("q8_0", "q4_k_m"):
+            ids = [i for i in paired_ids(tab, q) if i not in ex] if q in tab else []
+            if not ids:
+                cells.append("–")
+                continue
+            t = tax(tab, q, ids)
+            lo, hi = bootstrap_ci(tab, q, ids)
+            cells.append(f"{100*t['tax']:+.1f} [{100*lo:+.1f}, {100*hi:+.1f}]")
+        out.append(f"| {m} | " + " | ".join(cells) + " |")
+    return "\n".join(out)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default="qwen2.5-7b")
+    ap.add_argument("--all", action="store_true", help="butun modeller, markdown tablo")
+    ap.add_argument("--clean", action="store_true", help="ceviri hatali 8 soruyu cikar")
     a = ap.parse_args()
     rows = load()
+    if a.all:
+        print(f"fp16 dogruluk (%) ve quantization vergisi (puan){' - ceviri hatalari cikarildi' if a.clean else ''}")
+        print(summary_md(rows, a.clean))
+        return
     tab = table(rows, a.model)
     if BASE not in tab:
         raise SystemExit(f"{a.model}/{BASE} henuz yok -> vergi hesaplanamaz. Mevcut: {sorted(tab)}")
