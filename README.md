@@ -70,7 +70,33 @@ JSON extraction, plus a Turkish-only morphology set.
 **Quantization tax = (accuracy loss in TR) − (accuracy loss in EN)** relative to fp16,
 with bootstrap 95% confidence intervals.
 
-*Results table (fp16 / Q8_0 / Q4_K_M): TODO*
+Qwen2.5-7B-Instruct GGUF, llama.cpp `b12470`, CPU, greedy decoding. Accuracy (%):
+
+| Category | n | fp16 TR | fp16 EN | Q8_0 TR | Q8_0 EN | Q4_K_M TR | Q4_K_M EN |
+|---|---|---|---|---|---|---|---|
+| Reading (Belebele) | 60 | 78.3 | 95.0 | 78.3 | 95.0 | 81.7 | 98.3 |
+| Knowledge (Global-MMLU CA) | 40 | 42.5 | 70.0 | 42.5 | 70.0 | 45.0 | 65.0 |
+| Math (GSM8K) | 40 | 77.5 | 95.0 | 80.0 | 95.0 | 72.5 | 100.0 |
+| Instruction following | 60 | 78.3 | 75.0 | 78.3 | 81.7 | 78.3 | 76.7 |
+| JSON extraction | 50 | 100 | 100 | 100 | 100 | 100 | 100 |
+| Morphology (TR only) | 50 | 64.0 | – | 64.0 | – | 60.0 | – |
+
+Quantization tax over 250 paired items (percentage points, positive = Turkish loses more):
+
+| Quant | TR loss | EN loss | Tax | 95% CI |
+|---|---|---|---|---|
+| Q8_0 | −0.4 | −1.6 | +1.2 | [−1.6, +4.0] |
+| Q4_K_M | −0.4 | −1.2 | +0.8 | [−2.8, +4.8] |
+
+- **No measurable quantization tax for this model.** Both intervals include zero:
+  down to Q4_K_M, Turkish does not degrade more than English. This holds for a 7B
+  model at this sample size; a tax smaller than ~5 points cannot be ruled out.
+- **The language gap is already there at fp16, and it is large:** Turkish trails English
+  by 17 points in reading, 27.5 in knowledge and 17.5 in math. Quantization is not
+  the problem; the base model's Turkish is.
+- Instruction following and JSON extraction show no gap.
+- 38 items are wrong in Turkish but right in English at fp16; these are being
+  reviewed by hand to separate model errors from translation errors in the datasets.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
