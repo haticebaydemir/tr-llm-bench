@@ -114,8 +114,8 @@ tr:hover td{{background:#f7f9fc}} a{{color:#2a6fdb}} small{{color:#777}}
 <h1>TR-LLM Bench leaderboard</h1>
 <p>Turkish vs English accuracy on 242 paired items (8 mistranslated items removed), Turkish morphology,
 and CPU speed (llama.cpp <code>b12470</code>, 16 cores). <b>TR content tok/s</b> = CPU tok/s ÷ tokenizer tax.
-Click a column to sort. <a href="https://github.com/haticebaydemir/tr-llm-bench">Code &amp; method</a> ·
-<a href="https://huggingface.co/datasets/HaticeB/tr-llm-bench-eval">Eval set</a></p>
+Click a column to sort. <a target="_blank" rel="noopener" href="https://github.com/haticebaydemir/tr-llm-bench">Code &amp; method</a> ·
+<a target="_blank" rel="noopener" href="https://huggingface.co/datasets/HaticeB/tr-llm-bench-eval">Eval set</a></p>
 <table id="t"><thead><tr><th>Model</th><th>Quant</th><th>TR acc %</th><th>EN acc %</th><th>TR−EN</th>
 <th>Morph. %</th><th>Tokenizer tax</th><th>CPU tok/s</th><th>TR content tok/s</th></tr></thead><tbody>
 {rows}
