@@ -132,11 +132,35 @@ model.** The knowledge and math gaps are mostly real. Several other items contai
 errors that do not change the answer (e.g. "24 hours" → "24 seconds",
 "discount rate" → "indirim oranı" instead of "reeskont oranı").
 
+## 4. Quality vs. speed on CPU
+
+`llama-bench` (llama.cpp `b12470`, 16 cores, 128 generated tokens, 3 repeats) on every GGUF,
+with **Turkish content throughput = tok/s ÷ tokenizer tax** and Turkish accuracy over the
+paired categories (mistranslated items removed).
+
+![Quality vs speed](docs/pareto_cpu.png)
+
+| Model / quant | CPU tok/s | TR content tok/s | TR accuracy % |
+|---|---|---|---|
+| Gemma-2-9B fp16 | 3.2 | 2.3 | 90 |
+| **Gemma-2-9B Q4_K_M** | 8.7 | 6.2 | 89 |
+| Qwen2.5-7B Q4_K_M | 9.2 | 5.7 | 79 |
+| Llama-3.1-8B Q4_K_M | 11.7 | 8.4 | 74 |
+| Trendyol-7B Q4_K_M | 12.5 | 10.2 | 50 |
+
+- **Q4_K_M is close to free in every model:** at most 1 point of Turkish accuracy for
+  2–3× the speed of fp16.
+- **Gemma-2-9B Q4_K_M is the best quality/speed trade-off for Turkish** in this set.
+- Trendyol is the fastest in Turkish content because of its low tokenizer tax, but not
+  accurate enough for the speed to matter.
+- Qwen speed is measured on Qwen's official GGUF files (the same ones used for its quality
+  run); the other models use GGUFs built from their original weights.
+
 ## Summary
 
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
 tokens, but the tokenizer delivers up to ~38% less content per second; quantization down to
-Q4_K_M costs Turkish no more than English in any model tested; and the remaining quality gap
+Q4_K_M costs Turkish no more than English in any model tested (and runs 2–3× faster on CPU); and the remaining quality gap
 lies in the base model (Gemma-2-9B small, Llama-3.1-8B large), partly inflated by translated
 benchmarks.
 
