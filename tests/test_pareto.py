@@ -20,3 +20,9 @@ def test_tr_accuracy_ignores_english_and_unpaired():
             {"label": "m/fp16", "lang": "en", "id": "math/1", "correct": False},
             {"label": "m/fp16", "lang": "tr", "id": "morphology/1", "correct": False}]
     assert tr_accuracy(rows) == {"m/fp16": 0.5}
+
+
+def test_speeds_maps_official_qwen_split_files():
+    line = json.dumps({"model_filename": "/g/qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf",
+                       "n_prompt": 0, "n_gen": 128, "avg_ts": 7.0})
+    assert speeds([line]) == {"qwen2.5-7b/q8_0": 7.0}

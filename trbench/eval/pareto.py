@@ -18,6 +18,8 @@ SPEED = Path("results/cpu_speed.jsonl")
 PNG = Path("docs/pareto_cpu.png")
 TAX = {"qwen2.5-7b": 1.62, "trendyol-7b": 1.22, "llama-3.1-8b": 1.40, "gemma-2-9b": 1.40}
 NAME = re.compile(r"(?P<model>.+)-(?P<quant>fp16|q8_0|q4_k_m)\.gguf$")
+# Qwen'in resmi GGUF'lari (kendimiz uretmedik): qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf
+OFFICIAL = re.compile(r"^qwen2\.5-7b-instruct-(?P<quant>fp16|q8_0|q4_k_m)(-\d{5}-of-\d{5})?\.gguf$")
 
 
 def speeds(lines: list[str]) -> dict[str, float]:
@@ -25,9 +27,12 @@ def speeds(lines: list[str]) -> dict[str, float]:
     out = {}
     for x in lines:
         r = json.loads(x)
-        m = NAME.search(Path(r["model_filename"]).name)
-        if m and r.get("n_gen", 0) > 0 and r.get("n_prompt", 0) == 0:
-            out[f"{m['model']}/{m['quant']}"] = float(r["avg_ts"])
+        fn = Path(r["model_filename"]).name
+        o = OFFICIAL.search(fn)
+        m = NAME.search(fn)
+        label = f"qwen2.5-7b/{o['quant']}" if o else (f"{m['model']}/{m['quant']}" if m else None)
+        if label and r.get("n_gen", 0) > 0 and r.get("n_prompt", 0) == 0:
+            out[label] = float(r["avg_ts"])
     return out
 
 
