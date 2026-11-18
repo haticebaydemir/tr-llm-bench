@@ -19,8 +19,7 @@ import shutil
 from trbench.eval.run import OUT, load_items
 from trbench.eval.scorers import score
 
-STOPS = ("<|im_end|>", "<|im_start|>", "<|endoftext|>")
-
+STOPS = ("<|im_end|>", "<|im_start|>", "<|endoftext|>", "<|END_OF_TURN_TOKEN|>")
 
 def cut(text: str) -> str:
     """Ilk turn-sonu isaretinde kes (dogru durma ayarinin verecegi cevap)."""
