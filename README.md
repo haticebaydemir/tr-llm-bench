@@ -3,6 +3,8 @@
 How much does Turkish cost to serve on open LLMs, and how much quality does
 quantization take away from Turkish compared with English?
 
+**[Leaderboard](https://huggingface.co/spaces/HaticeB/tr-llm-bench)** · **[Eval set](https://huggingface.co/datasets/HaticeB/tr-llm-bench-eval)**
+
 Everything here is measured on parallel TR/EN data with deterministic scoring
 (seed 2026, no LLM judge), so the Turkish and English numbers are directly comparable.
 
@@ -79,6 +81,8 @@ decoding. fp16 accuracy (%, TR / EN), with the 8 mistranslated items removed (se
 | Qwen2.5-7B | 85 / 95 | 45 / 68 | 79 / 95 | 78 / 75 | 100 / 100 | 64 |
 | Llama-3.1-8B | 67 / 91 | 58 / 61 | 79 / 90 | 67 / 97 | 100 / 100 | 66 |
 | Trendyol-7B v1.8 | 82 / 78 | 50 / 58 | 36 / 36 | 32 / 18 | 50 / 50 | 86 |
+
+![Quantization tax](docs/quant_tax.png)
 
 Quantization tax over 242 paired items (percentage points, positive = Turkish loses more,
 95% bootstrap CI):
