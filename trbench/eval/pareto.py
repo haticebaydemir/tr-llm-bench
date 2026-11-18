@@ -67,21 +67,37 @@ def main() -> None:
         print(f"| {label} | {sp[label]:.1f} | {x:.1f} | {y:.0f} | {'yes' if label in best else ''} |")
 
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(8, 5), dpi=150)
-    for label, x, y in pts:
-        on = label in best
-        ax.scatter(x, y, s=60, color="#2a6fdb" if on else "#b8b8b0", zorder=3)
-        ax.annotate(label.replace("/", " "), (x, y), xytext=(6, 4), textcoords="offset points",
-                    fontsize=8, color="#222" if on else "#777")
-    fr = sorted((x, y) for label, x, y in pts if label in best)
-    ax.plot([p[0] for p in fr], [p[1] for p in fr], color="#2a6fdb", lw=1, zorder=2)
+    from matplotlib.lines import Line2D
+
+    colors = {"gemma-2-9b": "#2a6fdb", "qwen2.5-7b": "#e07b28", "llama-3.1-8b": "#3a9a5b",
+              "trendyol-7b": "#8a5cc2"}
+    names = {"gemma-2-9b": "Gemma-2-9B", "qwen2.5-7b": "Qwen2.5-7B", "llama-3.1-8b": "Llama-3.1-8B",
+             "trendyol-7b": "Trendyol-7B"}
+    marks = {"fp16": "o", "q8_0": "s", "q4_k_m": "^"}
+    at = {label: (x, y) for label, x, y in pts}
+    fig, ax = plt.subplots(figsize=(8.5, 5), dpi=150)
+    for model, col in colors.items():
+        seq = [at[f"{model}/{q}"] for q in marks if f"{model}/{q}" in at]
+        if not seq:
+            continue
+        ax.plot([p[0] for p in seq], [p[1] for p in seq], color=col, lw=1.5, zorder=2)
+        for q, m in marks.items():
+            if f"{model}/{q}" in at:
+                x, y = at[f"{model}/{q}"]
+                ax.scatter(x, y, marker=m, s=55, color=col, edgecolor="white", linewidth=0.8, zorder=3)
+        x, y = seq[-1]
+        ax.annotate(names[model], (x, y), xytext=(8, -3), textcoords="offset points",
+                    fontsize=9, color=col, fontweight="bold")
+    ax.legend(handles=[Line2D([], [], marker=m, ls="", color="#555", label=q.upper())
+                       for q, m in marks.items()],
+              loc="lower left", frameon=False, fontsize=8, title="quant", title_fontsize=8)
     ax.set_xlabel("Turkish content throughput on CPU (EN-equivalent tok/s, 16 cores)")
     ax.set_ylabel("Turkish accuracy (%)")
     ax.set_ylim(0, 100)
-    ax.set_xlim(left=0)
+    ax.set_xlim(0, max(x for _, x, _ in pts) * 1.25)
     ax.grid(color="#eee")
     ax.spines[["top", "right"]].set_visible(False)
-    ax.set_title("Quality vs. speed for Turkish on CPU (blue = Pareto frontier)", loc="left", fontsize=11)
+    ax.set_title("Q4 buys 2–3× the speed for at most 1 point of Turkish accuracy", loc="left", fontsize=11)
     PNG.parent.mkdir(exist_ok=True)
     fig.tight_layout()
     fig.savefig(PNG)
