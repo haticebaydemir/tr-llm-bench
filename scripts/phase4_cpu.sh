@@ -4,6 +4,8 @@
 #   nohup bash scripts/phase4_cpu.sh Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b \
 #       > /disk3/trbench/logs/phase4.out 2>&1 &
 # Yarida kalirsa ayni komut: bitmis sorular atlanir.
+# GGUF'ta sohbet sablonu yoksa (18 Kasim, Trendyol) llama.cpp ChatML'e duser; dogru sablonu ver:
+#   LLAMA_EXTRA="--chat-template llama2" bash scripts/phase4_cpu.sh ...
 set -euo pipefail
 # set -e sessiz cikar; nerede durdugunu her zaman yazdir.
 trap 'echo "[phase4] HATA: satir $LINENO, komut: $BASH_COMMAND" >&2' ERR
@@ -54,7 +56,7 @@ for Q in $QUANTS; do
   if ss -ltn | grep -q ":$PORT "; then
     echo "[phase4] HATA: port $PORT dolu, baska bir sunucu calisiyor" >&2; exit 1
   fi
-  $LOW "$SERVER" -m "$GGUF" --host 127.0.0.1 --port $PORT -t 16 -c 8192 -np 4 \
+  $LOW "$SERVER" -m "$GGUF" --host 127.0.0.1 --port $PORT -t 16 -c 8192 -np 4 ${LLAMA_EXTRA:-} \
        > "$L/llama_${NAME}_${Q}.log" 2>&1 &
   SPID=$!
   timeout 900 bash -c "until curl -sf 127.0.0.1:$PORT/health >/dev/null; do sleep 5; done"

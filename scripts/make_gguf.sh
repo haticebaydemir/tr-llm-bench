@@ -44,6 +44,8 @@ snapshot_download('$HF', local_dir='$SRC',
   $LOW "$CV/bin/python" "$LCPP/convert_hf_to_gguf.py" "$SRC" --outtype f16 --outfile "$F16.tmp" \
       > "$L/convert_$NAME.log" 2>&1
   mv "$F16.tmp" "$F16"
+  # 18 Kasim: Trendyol'un dosyalarinda sablon yoktu, llama.cpp sessizce ChatML kullandi.
+  grep -q "chat_template" "$L/convert_$NAME.log" || echo "[gguf] UYARI: $NAME icin sohbet sablonu YOK; phase4'te LLAMA_EXTRA=\"--chat-template ...\" ver" >&2
   rm -rf "$SRC"   # 15 GB yer acar; gerekirse yeniden indirilir
 fi
 for Q in q8_0 q4_k_m; do
