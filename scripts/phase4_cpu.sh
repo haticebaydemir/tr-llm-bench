@@ -5,7 +5,9 @@
 #       > /disk3/trbench/logs/phase4.out 2>&1 &
 # Yarida kalirsa ayni komut: bitmis sorular atlanir.
 # GGUF'ta sohbet sablonu yoksa (18 Kasim, Trendyol) llama.cpp ChatML'e duser; dogru sablonu ver:
-#   LLAMA_EXTRA="--chat-template llama2" bash scripts/phase4_cpu.sh ...
+#   LLAMA_EXTRA="--chat-template-file configs/chat_templates/mistral_inst.jinja" bash scripts/phase4_cpu.sh ...
+# Dikkat: "--chat-template llama2" gibi bir AD vermek bu llama.cpp surumunde sablonun
+# KENDISI sayilir (Jinja) ve modele sadece "llama2" kelimesi gider. Her zaman dosya ver.
 set -euo pipefail
 # set -e sessiz cikar; nerede durdugunu her zaman yazdir.
 trap 'echo "[phase4] HATA: satir $LINENO, komut: $BASH_COMMAND" >&2' ERR

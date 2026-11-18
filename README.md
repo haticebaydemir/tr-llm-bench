@@ -70,31 +70,35 @@ JSON extraction, plus a Turkish-only morphology set.
 **Quantization tax = (accuracy loss in TR) − (accuracy loss in EN)** relative to fp16,
 with bootstrap 95% confidence intervals.
 
-Qwen2.5-7B-Instruct GGUF, llama.cpp `b12470`, CPU, greedy decoding. Accuracy (%):
+Instruct models, GGUF built from the original weights, llama.cpp `b12470`, CPU, greedy
+decoding. fp16 accuracy (%, TR / EN), with the 8 mistranslated items removed (see below):
 
-| Category | n | fp16 TR | fp16 EN | Q8_0 TR | Q8_0 EN | Q4_K_M TR | Q4_K_M EN |
-|---|---|---|---|---|---|---|---|
-| Reading (Belebele) | 60 | 78.3 | 95.0 | 78.3 | 95.0 | 81.7 | 98.3 |
-| Knowledge (Global-MMLU CA) | 40 | 42.5 | 70.0 | 42.5 | 70.0 | 45.0 | 65.0 |
-| Math (GSM8K) | 40 | 77.5 | 95.0 | 80.0 | 95.0 | 72.5 | 100.0 |
-| Instruction following | 60 | 78.3 | 75.0 | 78.3 | 81.7 | 78.3 | 76.7 |
-| JSON extraction | 50 | 100 | 100 | 100 | 100 | 100 | 100 |
-| Morphology (TR only) | 50 | 64.0 | – | 64.0 | – | 60.0 | – |
+| Model | Reading | Knowledge | Math | Instruction | JSON | Morphology (TR) |
+|---|---|---|---|---|---|---|
+| Gemma-2-9B | 85 / 95 | 61 / 66 | 97 / 97 | 98 / 85 | 100 / 100 | 88 |
+| Qwen2.5-7B | 85 / 95 | 45 / 68 | 79 / 95 | 78 / 75 | 100 / 100 | 64 |
+| Llama-3.1-8B | 67 / 91 | 58 / 61 | 79 / 90 | 67 / 97 | 100 / 100 | 66 |
+| Trendyol-7B v1.8 | *re-running* | | | | | |
 
-Quantization tax over 250 paired items (percentage points, positive = Turkish loses more):
+Quantization tax over 242 paired items (percentage points, positive = Turkish loses more,
+95% bootstrap CI):
 
-| Quant | TR loss | EN loss | Tax | 95% CI |
-|---|---|---|---|---|
-| Q8_0 | −0.4 | −1.6 | +1.2 | [−1.6, +4.0] |
-| Q4_K_M | −0.4 | −1.2 | +0.8 | [−2.8, +4.8] |
+| Model | Q8_0 | Q4_K_M |
+|---|---|---|
+| Gemma-2-9B | +0.8 [−1.2, +2.9] | −0.4 [−3.3, +2.5] |
+| Qwen2.5-7B | +1.2 [−1.7, +4.5] | +1.7 [−2.1, +5.4] |
+| Llama-3.1-8B | −0.8 [−4.5, +2.9] | −1.7 [−7.4, +3.7] |
 
-- **No measurable quantization tax for this model.** Both intervals include zero:
-  down to Q4_K_M, Turkish does not degrade more than English. This holds for a 7B
-  model at this sample size; a tax smaller than ~5 points cannot be ruled out.
-- **The language gap is already there at fp16, and it is large:** Turkish trails English
-  by 17 points in reading, 27.5 in knowledge and 17.5 in math. Quantization is not
-  the problem; the base model's Turkish is.
-- Instruction following and JSON extraction show no gap.
+- **No measurable quantization tax in any of the three models.** Every interval includes
+  zero: down to Q4_K_M, Turkish does not degrade more than English.
+- **The language gap is set by the base model, and it varies a lot.** Gemma-2-9B is close
+  to parity in math and knowledge and scores 88% on Turkish morphology; Qwen2.5-7B trails
+  by 24 points in knowledge; Llama-3.1-8B trails by 24 in reading and by 30 in Turkish
+  instruction following.
+- JSON extraction shows no gap in any model.
+- Trendyol-7B v1.8 (Mistral-based) ships no chat template. llama.cpp silently fell back to
+  ChatML and the model answered nonsense; it is being re-run with its `[INST]` format
+  (`configs/chat_templates/mistral_inst.jinja`). Check the template of every converted model.
 
 ### How much of the gap is the benchmark's fault?
 
@@ -124,10 +128,11 @@ errors that do not change the answer (e.g. "24 hours" → "24 seconds",
 
 ## Summary
 
-For a Turkish user on Qwen2.5-7B: the engine serves Turkish as fast as English in tokens,
-but the tokenizer delivers ~38% less content per second; quantization down to Q4_K_M costs
-Turkish no more than English; and the remaining quality gap lies in the base model, partly
-inflated by translated benchmarks.
+For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
+tokens, but the tokenizer delivers up to ~38% less content per second; quantization down to
+Q4_K_M costs Turkish no more than English in any model tested; and the remaining quality gap
+lies in the base model (Gemma-2-9B small, Llama-3.1-8B large), partly inflated by translated
+benchmarks.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.

@@ -1,0 +1,1 @@
+{{ bos_token }}{% for m in messages %}{% if m['role'] == 'user' %}[INST] {{ m['content'] }} [/INST]{% elif m['role'] == 'assistant' %}{{ m['content'] }}{{ eos_token }}{% endif %}{% endfor %}
