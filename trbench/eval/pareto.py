@@ -16,7 +16,8 @@ from trbench.eval.analysis import PAIRED, TRANSLATION_ERRORS, load
 
 SPEED = Path("results/cpu_speed.jsonl")
 PNG = Path("docs/pareto_cpu.png")
-TAX = {"qwen2.5-7b": 1.62, "trendyol-7b": 1.22, "llama-3.1-8b": 1.40, "gemma-2-9b": 1.40}
+TAX = {"qwen2.5-7b": 1.62, "trendyol-7b": 1.22, "llama-3.1-8b": 1.40, "gemma-2-9b": 1.40,
+       "aya-expanse-8b": 1.21, "cosmos-tr-llama-8b": 1.40, "mistral-7b-v0.3": 2.21}
 NAME = re.compile(r"(?P<model>.+)-(?P<quant>fp16|q8_0|q4_k_m)\.gguf$")
 # Qwen'in resmi GGUF'lari (kendimiz uretmedik): qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf
 OFFICIAL = re.compile(r"^qwen2\.5-7b-instruct-(?P<quant>fp16|q8_0|q4_k_m)(-\d{5}-of-\d{5})?\.gguf$")
@@ -70,9 +71,11 @@ def main() -> None:
     from matplotlib.lines import Line2D
 
     colors = {"gemma-2-9b": "#2a6fdb", "qwen2.5-7b": "#e07b28", "llama-3.1-8b": "#3a9a5b",
-              "trendyol-7b": "#8a5cc2"}
+              "trendyol-7b": "#8a5cc2", "aya-expanse-8b": "#c2416b", "cosmos-tr-llama-8b": "#1f9aa6",
+              "mistral-7b-v0.3": "#8c6d3f"}
     names = {"gemma-2-9b": "Gemma-2-9B", "qwen2.5-7b": "Qwen2.5-7B", "llama-3.1-8b": "Llama-3.1-8B",
-             "trendyol-7b": "Trendyol-7B"}
+             "trendyol-7b": "Trendyol-7B", "aya-expanse-8b": "Aya-Expanse-8B",
+             "cosmos-tr-llama-8b": "Cosmos-TR-8B", "mistral-7b-v0.3": "Mistral-7B"}
     marks = {"fp16": "o", "q8_0": "s", "q4_k_m": "^"}
     at = {label: (x, y) for label, x, y in pts}
     fig, ax = plt.subplots(figsize=(8.5, 5), dpi=150)
