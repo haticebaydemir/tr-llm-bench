@@ -78,7 +78,7 @@ decoding. fp16 accuracy (%, TR / EN), with the 8 mistranslated items removed (se
 | Gemma-2-9B | 85 / 95 | 61 / 66 | 97 / 97 | 98 / 85 | 100 / 100 | 88 |
 | Qwen2.5-7B | 85 / 95 | 45 / 68 | 79 / 95 | 78 / 75 | 100 / 100 | 64 |
 | Llama-3.1-8B | 67 / 91 | 58 / 61 | 79 / 90 | 67 / 97 | 100 / 100 | 66 |
-| Trendyol-7B v1.8 | *re-running* | | | | | |
+| Trendyol-7B v1.8 | 82 / 78 | 50 / 58 | 36 / 36 | 32 / 18 | 50 / 50 | 86 |
 
 Quantization tax over 242 paired items (percentage points, positive = Turkish loses more,
 95% bootstrap CI):
@@ -88,17 +88,23 @@ Quantization tax over 242 paired items (percentage points, positive = Turkish lo
 | Gemma-2-9B | +0.8 [−1.2, +2.9] | −0.4 [−3.3, +2.5] |
 | Qwen2.5-7B | +1.2 [−1.7, +4.5] | +1.7 [−2.1, +5.4] |
 | Llama-3.1-8B | −0.8 [−4.5, +2.9] | −1.7 [−7.4, +3.7] |
+| Trendyol-7B v1.8 | −0.4 [−2.9, +2.1] | −2.9 [−7.4, +1.2] |
 
-- **No measurable quantization tax in any of the three models.** Every interval includes
+- **No measurable quantization tax in any of the four models.** Every interval includes
   zero: down to Q4_K_M, Turkish does not degrade more than English.
 - **The language gap is set by the base model, and it varies a lot.** Gemma-2-9B is close
   to parity in math and knowledge and scores 88% on Turkish morphology; Qwen2.5-7B trails
   by 24 points in knowledge; Llama-3.1-8B trails by 24 in reading and by 30 in Turkish
   instruction following.
-- JSON extraction shows no gap in any model.
+- JSON extraction is 100% in both languages for Gemma, Qwen and Llama.
+- **Turkish fine-tuning helps Turkish, but leaks into structured output.** Trendyol-7B v1.8
+  is the only model better in Turkish than in English at reading (82 vs 78) and is close to
+  Gemma on morphology (86), but half its JSON is invalid: it writes Turkish decimal commas
+  (`"birim_fiyat": 3,75`) and Turkish keys even when the prompt is English.
 - Trendyol-7B v1.8 (Mistral-based) ships no chat template. llama.cpp silently fell back to
-  ChatML and the model answered nonsense; it is being re-run with its `[INST]` format
-  (`configs/chat_templates/mistral_inst.jinja`). Check the template of every converted model.
+  ChatML and the first run was nonsense; the reported numbers come from a re-run with its
+  `[INST]` format (`configs/chat_templates/mistral_inst.jinja`). Check the template of every
+  converted model.
 
 ### How much of the gap is the benchmark's fault?
 
@@ -146,6 +152,9 @@ meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
   GGUF files are built from the original weights with that same release.
 - 250 paired items give 95% intervals of about ±4 points; a smaller quantization tax cannot be excluded.
 - Reading, knowledge and math use translated benchmarks; see the errata above.
+
+Eval set: [HaticeB/tr-llm-bench-eval](https://huggingface.co/datasets/HaticeB/tr-llm-bench-eval)
+(original items, IDs of third-party items, translation errata).
 
 ## Reproduce
 
