@@ -39,3 +39,10 @@ def test_dispatch():
     assert score(_item("choice", "B"), "Cevap: B")
     with pytest.raises(ValueError):
         score(_item("rouge", "x"), "x")
+
+
+def test_parse_choice_letter_then_newline_explanation():
+    from trbench.eval.scorers import parse_choice
+    assert parse_choice('A\n\nMetinde belirtildiği gibi, bir deneyin amacı...') == "A"
+    assert parse_choice("D\nBecause the text says so.") == "D"
+    assert parse_choice("A good answer is C) because") == "C"   # 'A' artikeli hala sayilmaz

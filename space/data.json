@@ -1,8 +1,68 @@
 [
  {
+  "model": "aya-expanse-8b",
+  "quant": "fp16",
+  "tr": 76.4,
+  "en": 86.8,
+  "morph": 90.0,
+  "tok_tax": 1.21,
+  "cpu_tps": 3.2,
+  "tr_content_tps": 2.6
+ },
+ {
+  "model": "aya-expanse-8b",
+  "quant": "q8_0",
+  "tr": 75.6,
+  "en": 88.0,
+  "morph": 88.0,
+  "tok_tax": 1.21,
+  "cpu_tps": 6.5,
+  "tr_content_tps": 5.4
+ },
+ {
+  "model": "aya-expanse-8b",
+  "quant": "q4_k_m",
+  "tr": 76.0,
+  "en": 86.4,
+  "morph": 92.0,
+  "tok_tax": 1.21,
+  "cpu_tps": 10.9,
+  "tr_content_tps": 9.0
+ },
+ {
+  "model": "cosmos-tr-llama-8b",
+  "quant": "fp16",
+  "tr": 73.1,
+  "en": 82.6,
+  "morph": 88.0,
+  "tok_tax": 1.4,
+  "cpu_tps": 2.5,
+  "tr_content_tps": 1.8
+ },
+ {
+  "model": "cosmos-tr-llama-8b",
+  "quant": "q8_0",
+  "tr": 74.0,
+  "en": 84.3,
+  "morph": 88.0,
+  "tok_tax": 1.4,
+  "cpu_tps": 7.2,
+  "tr_content_tps": 5.1
+ },
+ {
+  "model": "cosmos-tr-llama-8b",
+  "quant": "q4_k_m",
+  "tr": 72.3,
+  "en": 81.0,
+  "morph": 90.0,
+  "tok_tax": 1.4,
+  "cpu_tps": 11.9,
+  "tr_content_tps": 8.5
+ },
+ {
   "model": "gemma-2-9b",
   "quant": "fp16",
-  "tr": 89.7,
+  "tr": 90.5,
   "en": 89.3,
   "morph": 88.0,
   "tok_tax": 1.4,
@@ -12,7 +72,7 @@
  {
   "model": "gemma-2-9b",
   "quant": "q8_0",
-  "tr": 88.8,
+  "tr": 89.3,
   "en": 89.3,
   "morph": 88.0,
   "tok_tax": 1.4,
@@ -22,7 +82,7 @@
  {
   "model": "gemma-2-9b",
   "quant": "q4_k_m",
-  "tr": 88.8,
+  "tr": 89.3,
   "en": 88.0,
   "morph": 88.0,
   "tok_tax": 1.4,
@@ -58,6 +118,36 @@
   "tok_tax": 1.4,
   "cpu_tps": 11.7,
   "tr_content_tps": 8.4
+ },
+ {
+  "model": "mistral-7b-v0.3",
+  "quant": "fp16",
+  "tr": 46.3,
+  "en": 73.1,
+  "morph": 64.0,
+  "tok_tax": 2.21,
+  "cpu_tps": 2.7,
+  "tr_content_tps": 1.2
+ },
+ {
+  "model": "mistral-7b-v0.3",
+  "quant": "q8_0",
+  "tr": 48.8,
+  "en": 74.0,
+  "morph": 68.0,
+  "tok_tax": 2.21,
+  "cpu_tps": 7.5,
+  "tr_content_tps": 3.4
+ },
+ {
+  "model": "mistral-7b-v0.3",
+  "quant": "q4_k_m",
+  "tr": 45.9,
+  "en": 70.2,
+  "morph": 56.0,
+  "tok_tax": 2.21,
+  "cpu_tps": 13.0,
+  "tr_content_tps": 5.9
  },
  {
   "model": "qwen2.5-7b",

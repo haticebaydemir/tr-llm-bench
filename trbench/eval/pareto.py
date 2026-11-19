@@ -79,6 +79,7 @@ def main() -> None:
     marks = {"fp16": "o", "q8_0": "s", "q4_k_m": "^"}
     at = {label: (x, y) for label, x, y in pts}
     fig, ax = plt.subplots(figsize=(8.5, 5), dpi=150)
+    ends = []
     for model, col in colors.items():
         seq = [at[f"{model}/{q}"] for q in marks if f"{model}/{q}" in at]
         if not seq:
@@ -88,19 +89,26 @@ def main() -> None:
             if f"{model}/{q}" in at:
                 x, y = at[f"{model}/{q}"]
                 ax.scatter(x, y, marker=m, s=55, color=col, edgecolor="white", linewidth=0.8, zorder=3)
-        x, y = seq[-1]
-        ax.annotate(names[model], (x, y), xytext=(8, -3), textcoords="offset points",
-                    fontsize=9, color=col, fontweight="bold")
+        ends.append((seq[-1][1], seq[-1][0], names[model], col))
+    # Etiketler sag kenarda bir sutunda; cakismasin diye en az 3.4 puan arayla, ince cizgiyle noktaya bagli.
+    xmax = max(x for _, x, _ in pts)
+    lx = xmax * 1.08
+    placed = []
+    for y, x, name, col in sorted(ends):
+        ly = max(y, placed[-1] + 3.4) if placed else y
+        placed.append(ly)
+        ax.plot([x, lx - 0.1], [y, ly], color=col, lw=0.6, alpha=0.6, zorder=1)
+        ax.text(lx, ly, name, fontsize=9, color=col, fontweight="bold", va="center")
     ax.legend(handles=[Line2D([], [], marker=m, ls="", color="#555", label=q.upper())
                        for q, m in marks.items()],
               loc="lower left", frameon=False, fontsize=8, title="quant", title_fontsize=8)
     ax.set_xlabel("Turkish content throughput on CPU (EN-equivalent tok/s, 16 cores)")
     ax.set_ylabel("Turkish accuracy (%)")
     ax.set_ylim(0, 100)
-    ax.set_xlim(0, max(x for _, x, _ in pts) * 1.25)
+    ax.set_xlim(0, xmax * 1.4)
     ax.grid(color="#eee")
     ax.spines[["top", "right"]].set_visible(False)
-    ax.set_title("Q4 buys 2–3× the speed for at most 1 point of Turkish accuracy", loc="left", fontsize=11)
+    ax.set_title("Q4_K_M is the fastest setting for every model and costs at most 1 point of Turkish accuracy", loc="left", fontsize=11)
     PNG.parent.mkdir(exist_ok=True)
     fig.tight_layout()
     fig.savefig(PNG)

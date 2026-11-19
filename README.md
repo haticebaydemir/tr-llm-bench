@@ -72,15 +72,19 @@ JSON extraction, plus a Turkish-only morphology set.
 **Quantization tax = (accuracy loss in TR) − (accuracy loss in EN)** relative to fp16,
 with bootstrap 95% confidence intervals.
 
-Instruct models, GGUF built from the original weights, llama.cpp `b12470`, CPU, greedy
-decoding. fp16 accuracy (%, TR / EN), with the 8 mistranslated items removed (see below):
+Seven instruct models, GGUF built from the original weights (Qwen: official GGUF),
+llama.cpp `b12470`, CPU, greedy decoding. fp16 accuracy (%, TR / EN), with the 8
+mistranslated items removed (see below):
 
 | Model | Reading | Knowledge | Math | Instruction | JSON | Morphology (TR) |
 |---|---|---|---|---|---|---|
-| Gemma-2-9B | 85 / 95 | 61 / 66 | 97 / 97 | 98 / 85 | 100 / 100 | 88 |
+| Gemma-2-9B | 87 / 95 | 63 / 66 | 97 / 97 | 98 / 85 | 100 / 100 | 88 |
 | Qwen2.5-7B | 85 / 95 | 45 / 68 | 79 / 95 | 78 / 75 | 100 / 100 | 64 |
+| Aya-Expanse-8B | 84 / 96 | 53 / 63 | 69 / 85 | 70 / 83 | 100 / 100 | 90 |
+| Cosmos-TR-Llama-8B | 75 / 96 | 50 / 55 | 69 / 77 | 67 / 77 | 100 / 100 | 88 |
 | Llama-3.1-8B | 67 / 91 | 58 / 61 | 79 / 90 | 67 / 97 | 100 / 100 | 66 |
 | Trendyol-7B v1.8 | 82 / 78 | 50 / 58 | 36 / 36 | 32 / 18 | 50 / 50 | 86 |
+| Mistral-7B-v0.3 | 35 / 87 | 42 / 53 | 23 / 59 | 32 / 60 | 98 / 100 | 64 |
 
 ![Quantization tax](docs/quant_tax.png)
 
@@ -89,26 +93,37 @@ Quantization tax over 242 paired items (percentage points, positive = Turkish lo
 
 | Model | Q8_0 | Q4_K_M |
 |---|---|---|
-| Gemma-2-9B | +0.8 [−1.2, +2.9] | −0.4 [−3.3, +2.5] |
+| Gemma-2-9B | +1.2 [−0.4, +3.3] | −0.0 [−2.5, +2.5] |
 | Qwen2.5-7B | +1.2 [−1.7, +4.5] | +1.7 [−2.1, +5.4] |
+| Aya-Expanse-8B | +2.1 [−0.8, +5.0] | +0.0 [−4.5, +5.0] |
+| Cosmos-TR-Llama-8B | +0.8 [−2.5, +4.1] | −0.8 [−5.4, +3.7] |
 | Llama-3.1-8B | −0.8 [−4.5, +2.9] | −1.7 [−7.4, +3.7] |
 | Trendyol-7B v1.8 | −0.4 [−2.9, +2.1] | −2.9 [−7.4, +1.2] |
+| Mistral-7B-v0.3 | −1.7 [−5.4, +1.7] | −2.5 [−7.4, +2.1] |
 
-- **No measurable quantization tax in any of the four models.** Every interval includes
+- **No measurable quantization tax in any of the seven models.** All 14 intervals include
   zero: down to Q4_K_M, Turkish does not degrade more than English.
-- **The language gap is set by the base model, and it varies a lot.** Gemma-2-9B is close
-  to parity in math and knowledge and scores 88% on Turkish morphology; Qwen2.5-7B trails
-  by 24 points in knowledge; Llama-3.1-8B trails by 24 in reading and by 30 in Turkish
-  instruction following.
-- JSON extraction is 100% in both languages for Gemma, Qwen and Llama.
-- **Turkish fine-tuning helps Turkish, but leaks into structured output.** Trendyol-7B v1.8
-  is the only model better in Turkish than in English at reading (82 vs 78) and is close to
-  Gemma on morphology (86), but half its JSON is invalid: it writes Turkish decimal commas
-  (`"birim_fiyat": 3,75`) and Turkish keys even when the prompt is English.
-- Trendyol-7B v1.8 (Mistral-based) ships no chat template. llama.cpp silently fell back to
-  ChatML and the first run was nonsense; the reported numbers come from a re-run with its
-  `[INST]` format (`configs/chat_templates/mistral_inst.jinja`). Check the template of every
-  converted model.
+- **The language gap is set by the base model, and it varies a lot.** Gemma-2-9B is at
+  parity in math and close in knowledge; Qwen2.5-7B trails by 23 points in knowledge;
+  Llama-3.1-8B trails by 24 in reading and by 30 in Turkish instruction following;
+  Mistral-7B, the model with the worst tokenizer tax (2.21×), is weakest in Turkish overall.
+- **Multilingual and Turkish-tuned models lead on morphology:** Aya 90, Gemma 88, Cosmos 88,
+  Trendyol 86, against 64–66 for Qwen, Llama and Mistral.
+- **Turkish fine-tuning helps Turkish, but can leak into structured output.** Trendyol-7B v1.8
+  is the only model better in Turkish than in English at reading (82 vs 78), but half its
+  JSON is invalid: it writes Turkish decimal commas (`"birim_fiyat": 3,75`) and Turkish keys
+  even when the prompt is English. Cosmos (Llama-3 fine-tuned on Turkish) gains on reading
+  and morphology over Llama-3.1-8B without that side effect.
+- **Practical traps found along the way:**
+  - Trendyol-7B v1.8 (Mistral-based) ships no chat template. llama.cpp silently fell back
+    to ChatML and the first run was nonsense; the numbers above come from a re-run with its
+    `[INST]` format (`configs/chat_templates/mistral_inst.jinja`). Check the template of
+    every converted model; `scripts/queue_models.sh` now refuses to measure a model without one.
+  - Aya printed its end-of-turn token (`<|END_OF_TURN_TOKEN|>`) as text, and answered
+    multiple choice as a bare letter followed by an explanation. Responses were cut at the
+    turn token (identical to a correct stop under greedy decoding; `trbench.eval.rescore`)
+    and the scorer was fixed to read a bare letter followed by a newline. All models were
+    re-scored with the same rules; only Aya and 4 Gemma items changed.
 
 ### How much of the gap is the benchmark's fault?
 
@@ -144,29 +159,53 @@ paired categories (mistranslated items removed).
 
 ![Quality vs speed](docs/pareto_cpu.png)
 
-| Model / quant | CPU tok/s | TR content tok/s | TR accuracy % |
-|---|---|---|---|
-| Gemma-2-9B fp16 | 3.2 | 2.3 | 90 |
-| **Gemma-2-9B Q4_K_M** | 8.7 | 6.2 | 89 |
-| Qwen2.5-7B Q4_K_M | 9.2 | 5.7 | 79 |
-| Llama-3.1-8B Q4_K_M | 11.7 | 8.4 | 74 |
-| Trendyol-7B Q4_K_M | 12.5 | 10.2 | 50 |
+Q4_K_M, the fastest setting of each model:
 
-- **Q4_K_M is close to free in every model:** at most 1 point of Turkish accuracy for
-  2–3× the speed of fp16.
-- **Gemma-2-9B Q4_K_M is the best quality/speed trade-off for Turkish** in this set.
-- Trendyol is the fastest in Turkish content because of its low tokenizer tax, but not
-  accurate enough for the speed to matter.
-- Qwen speed is measured on Qwen's official GGUF files (the same ones used for its quality
-  run); the other models use GGUFs built from their original weights.
+| Model (Q4_K_M) | CPU tok/s | TR content tok/s | TR accuracy % |
+|---|---|---|---|
+| **Gemma-2-9B** | 8.7 | 6.2 | 89 |
+| Qwen2.5-7B | 9.2 | 5.7 | 79 |
+| **Aya-Expanse-8B** | 10.9 | 9.0 | 76 |
+| Llama-3.1-8B | 11.7 | 8.4 | 74 |
+| Cosmos-TR-Llama-8B | 11.9 | 8.5 | 72 |
+| Trendyol-7B v1.8 | 12.5 | 10.2 | 50 |
+| Mistral-7B-v0.3 | 13.0 | 5.9 | 46 |
+
+- **Q4_K_M costs at most 1 point of Turkish accuracy in every model** and is its fastest
+  setting.
+- **Gemma-2-9B Q4_K_M is the most accurate; Aya-Expanse-8B Q4_K_M is the next point on the quality–speed frontier**
+  (9.0 Turkish content tok/s at 76%), helped by the lowest tokenizer tax (1.21×).
+- Raw speed is not content speed: Mistral-7B is the fastest model in tokens (13.0 tok/s) but
+  its 2.21× tax leaves it among the slowest in Turkish content (5.9).
+- fp16 CPU speed depends on memory placement: Cosmos and Mistral fp16 measured 2.5 and
+  2.7 tok/s, twice repeated, while their same-architecture twins (Llama, Trendyol) ran
+  at 4.1–4.2 and all four match within 0.4 tok/s at Q8_0 and Q4_K_M. Compare models at
+  Q8_0 or Q4_K_M.
+
+### Input length
+
+Q4_K_M, 16 cores. Prompt reading at 256 / 1,024 / 4,096 tokens, and generation with an
+empty vs a 4,096-token context:
+
+| Model | Read 256 | Read 1k | Read 4k (tok/s) | Generate, empty | Generate, 4k context |
+|---|---|---|---|---|---|
+| Qwen2.5-7B | 65.7 | 64.7 | 58.0 | 11.4 | 8.3 |
+| Gemma-2-9B | 50.6 | 48.5 | 41.9 | 8.8 | 5.6 |
+| Llama-3.1-8B | 62.3 | 60.2 | 52.6 | 11.9 | 8.3 |
+| Trendyol-7B v1.8 | 62.1 | 59.7 | 53.6 | 12.9 | 7.9 |
+
+Reading slows by 12–17% from 256 to 4,096 tokens; generation slows by 27–39% once 4,096
+tokens sit in the context. Because the same Turkish text takes 1.2–2.2× the tokens, a
+Turkish conversation reaches that slower regime sooner than an English one: the tokenizer
+tax is paid again in long contexts.
 
 ## Summary
 
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
-tokens, but the tokenizer delivers up to ~38% less content per second; quantization down to
-Q4_K_M costs Turkish no more than English in any model tested (and runs 2–3× faster on CPU); and the remaining quality gap
-lies in the base model (Gemma-2-9B small, Llama-3.1-8B large), partly inflated by translated
-benchmarks.
+tokens, but the tokenizer delivers up to ~38% less content per second, and again more slowly
+in long contexts; quantization down to Q4_K_M costs Turkish no more than English in any of
+seven models; and the remaining quality gap lies in the base model (small for Gemma-2-9B,
+large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.

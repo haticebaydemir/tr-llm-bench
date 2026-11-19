@@ -24,7 +24,8 @@ def parse_choice(response: str) -> str | None:
     m = re.search(_LABEL + r"\(?([ABCD])\b", r, flags=re.IGNORECASE)
     if m:
         return m.group(1).upper()
-    m = re.match(r"\(?([ABCD])(?:[).:]|\s+(?:şık|seçenek|option)|$)", r, flags=re.IGNORECASE)
+    # 19 Kasim: 'A\n\nMetinde...' (harf, satir sonu, aciklama) da tek harfle baslayan cevaptir (Aya).
+    m = re.match(r"\(?([ABCD])(?:[).:]|\s+(?:şık|seçenek|option)|[ \t]*(?:\n|$))", r, flags=re.IGNORECASE)
     if m:
         return m.group(1).upper()
     m = re.search(r"\b([ABCD])\)", r)
