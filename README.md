@@ -41,6 +41,10 @@ Raw tok/s is reported together with **content throughput = tok/s ÷ tax**,
 because Turkish tokens carry less content than English ones.
 
 Qwen2.5-7B-Instruct, vLLM, one V100 32 GB, 256 output tokens per request, median of 3 repeats.
+*Provenance:* measured on 16 Nov 2026 with an earlier version of `configs/phase3.yaml`
+(GPU memory utilization 0.80, CUDA graphs on). That setting used more memory than the shared
+server's budget allows, so the config was retired and now holds the in-budget settings;
+these numbers cannot be reproduced from the current config and are kept as a historical result.
 **Content tok/s = TR tok/s ÷ 1.62** (Qwen's tokenizer tax), i.e. how much English-equivalent content Turkish users get.
 
 | Quant | Concurrency | EN tok/s | TR tok/s | TR content tok/s | TTFT p50 EN / TR (ms) |
@@ -234,5 +238,18 @@ bash scripts/phase4_cpu.sh Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b
 python -m trbench.eval.analysis --model qwen2.5-7b
 ```
 
+Every result row records where it came from: `git_commit` (and `git_dirty`), the SHA-256 of
+the eval set and of the GGUF file, the engine build, and `fp`, a hash of every setting that
+changes the result (max tokens, context, template, engine flags). A rerun skips only rows with
+the same `fp`, so changing a setting never silently reuses an old measurement.
+`python -m trbench.eval.audit_pairs` checks that each GSM8K TR/EN pair contains the same numbers.
+
 The benchmark ran on a shared server. `trbench.guard` watches the other GPUs and a
 health endpoint (`TRBENCH_SERVICE_HEALTH`) and stops the run if it disturbs anything.
+It checks every 30 s and stops after 2 consecutive violations, so it reacts within about
+a minute; `scripts/gpu_bench.sh` also stops the benchmark if the guard process itself dies.
+
+## License
+
+Code: MIT (see `LICENSE`). Third-party benchmark items keep their own licenses and are not
+redistributed; the dataset card lists them.

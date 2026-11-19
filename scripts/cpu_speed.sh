@@ -18,6 +18,7 @@ if [ ! -x "$LCPP/build/bin/llama-bench" ]; then
 fi
 : > "$OUT"
 for F in /disk3/trbench/gguf/*/*.gguf; do
+  case "$F" in *-0000[2-9]-of-*) continue ;; esac   # bolunmus dosyada sadece ilk parca
   echo "[speed] $(basename "$F") $(date)"
   $LOW "$LCPP/build/bin/llama-bench" -m "$F" -t 16 -p 512 -n 128 -r 3 -o jsonl >> "$OUT" 2>> "$L/llama_bench.log"
 done

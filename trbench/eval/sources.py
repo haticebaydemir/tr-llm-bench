@@ -139,7 +139,8 @@ MMLU_PROMPT = {
     "en": ("Answer the question below. Write only the letter of the correct option "
            "(A, B, C or D).\n\nQuestion: {question}\n\n{options}\n\nAnswer:"),
 }
-MMLU_COLS = ("sample_id", "question", "option_a", "option_b", "option_c", "option_d", "answer")
+MMLU_COLS = ("sample_id", "question", "option_a", "option_b", "option_c", "option_d", "answer",
+             "cultural_sensitivity_label")   # yoksa CA filtresi yapilamaz -> hata, sessizce hepsini alma
 
 
 def global_mmlu_items(tr: pd.DataFrame, en: pd.DataFrame, n: int) -> list[Item]:
@@ -154,8 +155,7 @@ def global_mmlu_items(tr: pd.DataFrame, en: pd.DataFrame, n: int) -> list[Item]:
             raise ValueError(f"Global-MMLU {name}: eksik sutun {missing}; var: {list(df.columns)}")
 
     def ca(df: pd.DataFrame) -> pd.DataFrame:
-        col = "cultural_sensitivity_label"
-        return df[df[col] == "CA"] if col in df.columns else df
+        return df[df["cultural_sensitivity_label"] == "CA"]
 
     common = sorted(set(ca(tr)["sample_id"]) & set(ca(en)["sample_id"]))
     if len(common) < n:

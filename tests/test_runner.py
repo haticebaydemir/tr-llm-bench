@@ -12,7 +12,7 @@ def test_done_keys_only_counts_successful(tmp_path):
          "status": "engine_failed"},
     ]
     p.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
-    assert done_keys(p) == {("vllm", "q", "fp16", "tr", 1, 0)}   # eski satirlar: vllm; basarisiz tekrar denenir
+    assert done_keys(p) == {("vllm", "q", "fp16", "tr", 1, 0, None)}   # eski satirlar: vllm; basarisiz tekrar denenir
     assert done_keys(tmp_path / "yok.jsonl") == set()
 
 
@@ -24,7 +24,7 @@ def test_prompts_cycle_and_filter_by_lang():
 
 def test_run_key_and_served_name():
     assert run_key({"engine": "llamacpp", "model": "m", "quant": "fp16", "lang": "en",
-                    "concurrency": 4, "repeat": 2, "extra": 1}) == ("llamacpp", "m", "fp16", "en", 4, 2)
+                    "concurrency": 4, "repeat": 2, "fp": "abc", "extra": 1}) == ("llamacpp", "m", "fp16", "en", 4, 2, "abc")
     m = ModelSpec(name="qwen2.5-7b", quant="awq-int4", params_b=7.6, repo="x")
     assert served_name(m) == "trbench-qwen2.5-7b-awq-int4"
 
@@ -54,3 +54,13 @@ def test_vllm_extra_args_from_config(monkeypatch):
     cmd = seen["cmd"]
     assert cmd[cmd.index("--max-num-batched-tokens") + 1] == "2048" and "--enforce-eager" in cmd
     Path("vllm_trbench-mistral-7b-v0.3-awq-int4.log").unlink(missing_ok=True)
+
+
+def test_fingerprint_changes_with_result_affecting_settings():
+    # max_tokens degisirse eski kosu "bitmis" sayilmamali (resume yanlis atlamasin)
+    cfg = load("configs/gpu_llamacpp.yaml")
+    m = cfg.models[0]
+    fp = cfg.fingerprint(m)
+    assert all(r["fp"] == fp for r in cfg.runs() if r["model"] == m.name)
+    assert cfg.model_copy(update={"max_tokens": 128}).fingerprint(m) != fp
+    assert cfg.model_copy(update={"concurrency": [1]}).fingerprint(m) == fp   # kosu ekseni, ayar degil

@@ -30,6 +30,7 @@ import httpx
 from trbench.config import ModelSpec, Phase3, load
 from trbench.load.generator import run as load_run
 from trbench.load.generator import summarize
+from trbench.provenance import file_sha256, provenance, sha256_text
 
 ROOT = Path("/disk3/trbench")
 MODELS_DIR = ROOT / "models"
@@ -37,7 +38,7 @@ LOGS = ROOT / "logs"
 VLLM = ROOT / "venv-vllm/bin/vllm"
 LLAMA_CUDA = ROOT / "llama.cpp/build-cuda/bin/llama-server"
 EVAL = Path("data/eval/eval_set.jsonl")
-KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat")
+KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat", "fp")
 
 
 # ---------- Saf yardimcilar (testli) ----------
@@ -82,7 +83,11 @@ def env_meta() -> dict:
                          check=False, capture_output=True, text=True).stdout.strip()
     ver = subprocess.run([str(VLLM.parent / "python"), "-c", "import vllm;print(vllm.__version__)"],
                          check=False, capture_output=True, text=True).stdout.strip()
-    return {"gpu": smi, "vllm": ver, "host": platform.node()}
+    lcpp = subprocess.run([str(LLAMA_CUDA), "--version"], check=False,
+                          capture_output=True, text=True)
+    lcpp_ver = next((x for x in (lcpp.stdout + lcpp.stderr).splitlines() if "version" in x), "")
+    return {"gpu": smi, "vllm": ver, "llamacpp": lcpp_ver.strip(), "host": platform.node(),
+            **provenance()}
 
 
 def gpu2_used_mib() -> int | None:
@@ -190,7 +195,9 @@ def main() -> None:
     out = Path(cfg.results)
     items = [json.loads(x) for x in EVAL.read_text(encoding="utf-8").splitlines()]
     done = done_keys(out)
-    meta = env_meta()
+    meta = {**env_meta(), "config": ap.parse_args().config,
+            "config_sha": sha256_text(Path(ap.parse_args().config).read_text(encoding="utf-8")),
+            "eval_sha": file_sha256(EVAL)}
     LOGS.mkdir(parents=True, exist_ok=True)
 
     for m in cfg.models:
@@ -209,6 +216,8 @@ def main() -> None:
             print(f"[runner] {m.name}/{m.quant}: INDIRILEMEDI -> {e}", flush=True)
             continue
 
+        if cfg.engine == "llamacpp":
+            base["weights_file"], base["weights_sha256"] = path.name, file_sha256(path)
         idle = gpu2_used_mib()
         proc = (start_llamacpp if cfg.engine == "llamacpp" else start_vllm)(cfg, m, path)
         if not wait_healthy(proc, cfg.port):

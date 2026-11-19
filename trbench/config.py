@@ -11,6 +11,8 @@ GPU 2 butcesi (19 Kasim, 16 Kasim olayindan sonra yeniden hesaplandi):
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 from itertools import product
 from pathlib import Path
 from typing import Literal
@@ -102,11 +104,22 @@ class Phase3(BaseModel):
                                  f"pay {OUR_BUDGET_GB} GB (sigmaz; servis alarmi 20 GB)")
         return self
 
+    def fingerprint(self, m: ModelSpec) -> str:
+        """Sonucu degistiren her ayarin kisa ozeti. Resume anahtarina girer:
+        max_tokens ya da sablon degisirse eski kosu 'bitmis' sayilmaz."""
+        tpl = Path(m.chat_template).read_text(encoding="utf-8") if m.chat_template else ""
+        d = {"engine": self.engine, "repo": m.repo, "quant": m.quant, "template": tpl,
+             "max_model_len": self.max_model_len, "max_tokens": self.max_tokens,
+             "max_num_seqs": self.max_num_seqs, "util": self.gpu_memory_utilization,
+             "eager": self.enforce_eager, "extra": self.extra_args}
+        return hashlib.sha256(json.dumps(d, sort_keys=True).encode()).hexdigest()[:12]
+
     def runs(self) -> list[dict]:
         """Model x dil x esanlilik x tekrar. Model disarida: her model bir kez yuklenir."""
         return [
             {"engine": self.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
-             "lang": lang, "concurrency": c, "repeat": r, "n_requests": max(16, 4 * c)}
+             "lang": lang, "concurrency": c, "repeat": r, "n_requests": max(16, 4 * c),
+             "fp": self.fingerprint(m)}
             for m in self.models
             for lang, c, r in product(self.langs, self.conc(m), range(self.repeats))
         ]

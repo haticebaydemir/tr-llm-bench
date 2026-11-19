@@ -111,6 +111,13 @@ def test_global_mmlu_reports_missing_columns():
         global_mmlu_items(bad, _mmlu("en", ["CA"]), 1)
 
 
+def test_global_mmlu_requires_cultural_label():
+    # Sutun yoksa CA filtresi yapilamaz: sessizce butun sorulari almak yerine hata
+    bad = _mmlu("tr", ["CA"]).drop(columns=["cultural_sensitivity_label"])
+    with pytest.raises(ValueError, match="cultural_sensitivity_label"):
+        global_mmlu_items(bad, _mmlu("en", ["CA"]), 1)
+
+
 def test_math_prompt_requires_reasoning():
     # Regresyon: "dusunebilirsiniz" (izin) degil, "cozun" (zorunlu) olmali
     from trbench.eval.sources import MATH_PROMPT

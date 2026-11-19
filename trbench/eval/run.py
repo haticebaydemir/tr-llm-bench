@@ -21,6 +21,7 @@ import httpx
 from trbench.eval.build import OUT as EVAL
 from trbench.eval.schema import Item
 from trbench.eval.scorers import score
+from trbench.provenance import file_sha256, provenance
 
 OUT = Path("results/phase4.jsonl")
 # Kategoriye gore cikti siniri: TR ayni icerik icin ~1.6x token harciyor (Faz 1),
@@ -57,7 +58,7 @@ async def ask(client: httpx.AsyncClient, url: str, item: Item) -> tuple[str | No
 
 
 async def run(items: list[Item], url: str, label: str, parallel: int, out: Path,
-              client: httpx.AsyncClient | None = None) -> int:
+              client: httpx.AsyncClient | None = None, meta: dict | None = None) -> int:
     done = done_ids(out, label)
     todo = [i for i in items if (i.id, i.lang) not in done]
     own = client is None
@@ -72,7 +73,7 @@ async def run(items: list[Item], url: str, label: str, parallel: int, out: Path,
             row = {"label": label, "id": item.id, "lang": item.lang, "category": item.category,
                    "correct": None if resp is None else score(item, resp),
                    "response": resp, "error": err,
-                   "latency_s": round(time.perf_counter() - t0, 2)}
+                   "latency_s": round(time.perf_counter() - t0, 2), **(meta or {})}
             with out.open("a", encoding="utf-8") as f:
                 f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
@@ -96,6 +97,15 @@ def accuracy(rows: list[dict]) -> dict[tuple[str, str, str], tuple[int, int]]:
     return {k: (v[0], v[1]) for k, v in acc.items()}
 
 
+def server_meta(url: str) -> dict:
+    """llama.cpp /props: hangi surum ve hangi agirlik dosyasi cevapladi (vLLM'de yok, bos gecer)."""
+    try:
+        p = httpx.get(f"{url}/props", timeout=5).json()
+    except (httpx.HTTPError, ValueError):
+        return {}
+    return {"server_build": p.get("build_info"), "weights_file": Path(p.get("model_path") or "").name or None}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--url", default="http://127.0.0.1:18010")
@@ -107,7 +117,8 @@ def main() -> None:
     if a.limit:
         items = items[: a.limit]
     t0 = time.time()
-    n = asyncio.run(run(items, a.url, a.label, a.parallel, OUT))
+    meta = {**provenance(), "eval_sha": file_sha256(EVAL), **server_meta(a.url)}
+    n = asyncio.run(run(items, a.url, a.label, a.parallel, OUT, meta=meta))
     rows = [json.loads(x) for x in OUT.read_text(encoding="utf-8").splitlines()]
     print(f"{n} soru soruldu, {time.time() - t0:.0f} sn")
     for (lab, cat, lang), (ok, tot) in sorted(accuracy(rows).items()):

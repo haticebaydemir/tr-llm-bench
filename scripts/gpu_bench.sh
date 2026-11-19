@@ -26,8 +26,20 @@ trap cleanup EXIT
 trap 'exit 143' INT TERM
 
 nohup $PY -m trbench.guard --stop-cmd "$KILL_BENCH" > "$L/gpu_guard.log" 2>&1 &
+GUARD=$!
 sleep 3
+kill -0 "$GUARD" 2>/dev/null || { echo "[gpu] guard baslamadi, olcum yapilmiyor" >&2; exit 1; }
 echo "[gpu] basladi $CFG $(date)"
 $PY -m trbench.runner "$CFG" &
-wait $!
+RUNNER=$!
+# Bekci: guard herhangi bir nedenle olurse olcum korumasiz kalmasin -> durdur.
+while kill -0 "$RUNNER" 2>/dev/null; do
+  if ! kill -0 "$GUARD" 2>/dev/null; then
+    echo "[gpu] GUARD DURDU -> olcum de durduruluyor $(date)" >&2
+    eval "$KILL_BENCH" || true
+    exit 1
+  fi
+  sleep 5
+done
+wait "$RUNNER"
 echo "[gpu] bitti $(date)"

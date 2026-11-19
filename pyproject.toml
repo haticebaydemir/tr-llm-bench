@@ -3,11 +3,12 @@ name = "trbench"
 version = "0.1.0"
 description = "Turkish open-LLM serving & quality benchmark"
 requires-python = ">=3.10"
+license = { text = "MIT" }
 dependencies = ["pydantic>=2", "pyyaml", "httpx", "pandas", "pyarrow"]
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
-tok = ["transformers>=4.45", "tokenizers", "huggingface_hub", "sentencepiece", "protobuf", "matplotlib"]
+tok = ["transformers>=4.45", "tokenizers", "huggingface_hub", "sentencepiece", "protobuf"]
 
 [build-system]
 requires = ["setuptools>=68"]
