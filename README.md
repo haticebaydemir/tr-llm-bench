@@ -14,23 +14,42 @@ The same FLORES+ sentences take a different number of tokens per language.
 **Tax = total Turkish tokens / total English tokens.** Fertility (tokens per word)
 is not used because word lengths differ across languages.
 
-| Model | TR/EN tax |
-|---|---|
-| Aya-Expanse-8B | 1.21 |
-| Trendyol-7B | 1.22 |
-| Gemma-3-12B | 1.36 |
-| Gemma-2-9B | 1.40 |
-| Llama-3.1-8B / Cosmos-TR-Llama-8B | 1.40 |
-| gpt-oss-20b | 1.42 |
-| Mistral-Nemo-12B | 1.48 |
-| Qwen2.5-7B / Qwen3-8B | 1.62 |
-| Phi-4 | 1.92 |
-| DeepSeek | 2.03 |
-| Mistral-7B-v0.3 | 2.21 |
+| Tokenizer (models sharing it) | TR | FI | HU | DE | FR |
+|---|---|---|---|---|---|
+| Kumru-2B (Turkish-focused) | 0.64 | 1.49 | 1.69 | 1.48 | 1.52 |
+| Trendyol-7B | 1.10–1.22 ¹ | 1.95 | 1.94 | 1.56 | 1.58 |
+| Aya-Expanse-8B | 1.21 | 1.93 | 2.08 | 1.32 | 1.33 |
+| Gemma-3-12B | 1.36 | 1.66 | 1.67 | 1.32 | 1.40 |
+| Gemma-2-9B | 1.40 | 1.61 | 1.66 | 1.25 | 1.35 |
+| Llama-3.1-8B / Cosmos-TR-Llama-8B | 1.40 | 1.98 | 2.11 | 1.58 | 1.59 |
+| gpt-oss-20b / Phi-4-mini | 1.42 | 1.56 | 1.79 | 1.31 | 1.36 |
+| Mistral-Nemo-12B / Ministral-8B | 1.48 | 1.65 | 1.61 | 1.30 | 1.31 |
+| Qwen2.5-7B / Qwen3-8B | 1.62 | 1.97 | 2.11 | 1.55 | 1.57 |
+| Granite-3.3-8B | 1.72 | 1.87 | 1.91 | 1.61 | 1.62 |
+| Phi-4 | 1.92 | 1.99 | 2.14 | 1.58 | 1.59 |
+| DeepSeek-V3 | 2.03 | 1.87 | 1.98 | 1.51 | 1.54 |
+| Mistral-7B-v0.3 | 2.21 | 2.01 | 2.00 | 1.58 | 1.59 |
+
+Tokens relative to English (English = 1.0) on the same 2,009 sentences. 95% bootstrap intervals
+(resampling sentences, paired across languages) are in `results/tokenizer_langs.csv`;
+per-sentence token counts (numbers only, no text) in `results/tokenizer_counts.csv.gz`.
 
 A 1.62 tax means the same Turkish content costs 62% more tokens: more latency,
 less effective context and lower content throughput. Trendyol's Turkish vocabulary
 extension (32,768 → 44,312 tokens) cuts the tax to roughly Aya's level.
+
+**The cost is not specific to Turkish.** Turkish needs fewer tokens than the other two
+agglutinative languages, Finnish and Hungarian, in 11 of 13 distinct tokenizers (no interval overlaps);
+the exceptions are Mistral-7B-v0.3 and DeepSeek-V3. Against German and French the picture is mixed.
+This points to the tokenizer's training data rather than morphology alone: a Turkish-focused
+tokenizer (Kumru) makes Turkish *cheaper* than English.
+
+¹ *Same tokenizer files (repo unchanged since June 2024), different libraries:* the fast tokenizer in
+transformers 4.57.3 gives 1.10, the SentencePiece (slow) tokenizer 1.12, and the earlier run with an
+older transformers gave 1.22. Every tokenizer row now records the repo commit, tokenizer class and
+library versions. All other tokenizers reproduced exactly.
+
+![Turkish vs other languages](docs/tokenizer_langs.png)
 
 ![Tokenizer tax](docs/tokenizer_tax_en.png)
 

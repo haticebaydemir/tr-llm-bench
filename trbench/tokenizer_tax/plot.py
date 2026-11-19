@@ -20,6 +20,10 @@ MERGE = {
     "Qwen3-8B": "Qwen2.5 / Qwen3",
     "Llama-3.1-8B": "Llama-3.1 (= Cosmos-TR)",
     "Cosmos-TR-Llama-8B": "Llama-3.1 (= Cosmos-TR)",
+    "gpt-oss-20B": "gpt-oss / Phi-4-mini",
+    "Phi-4-mini": "gpt-oss / Phi-4-mini",
+    "Mistral-Nemo-12B": "Mistral-Nemo / Ministral",
+    "Ministral-8B": "Mistral-Nemo / Ministral",
 }
 
 TEXT = {

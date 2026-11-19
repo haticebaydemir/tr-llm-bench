@@ -37,13 +37,27 @@ MODELS = {
     "gpt-oss-20B": "openai/gpt-oss-20b",
     "Phi-4": "microsoft/phi-4",
     "DeepSeek-V3": "deepseek-ai/DeepSeek-V3",
+    # Yeni nesil ve cok dilli modeller (19 Kasim eki; gated/silinmis olan atlanir, raporlanir)
+    "Ministral-8B": "mistralai/Ministral-8B-Instruct-2410",
+    "Phi-4-mini": "microsoft/Phi-4-mini-instruct",
+    "Granite-3.3-8B": "ibm-granite/granite-3.3-8b-instruct",
+    "EuroLLM-9B": "utter-project/EuroLLM-9B-Instruct",
+    "Kumru-2B": "vngrs-ai/Kumru-2B",
 }
 REF = "eng_Latn"
 # Windows'ta symlink uyarisi her modelde tekrarlaniyor; zararsiz, gizle.
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 OUT = Path("results/tokenizer_tax.csv")
+# Cumle basina token sayilari (metin YOK, sadece sayi) -> guven araligi icin (langs.py)
+COUNTS = Path("results/tokenizer_counts.csv.gz")
 
 TokenizeFn = Callable[[list[str]], Iterable[int]]
+
+
+def sentence_counts(texts: dict[str, list[str]], count_tokens: TokenizeFn) -> pd.DataFrame:
+    """Uzun tablo: lang, sent (cumle sirasi), tokens. Paralel korpus: ayni sent = ayni anlam."""
+    return pd.concat([pd.DataFrame({"lang": lang, "sent": range(len(s)), "tokens": list(count_tokens(s))})
+                      for lang, s in texts.items()], ignore_index=True)
 
 
 def compute_stats(texts: dict[str, list[str]], count_tokens: TokenizeFn) -> pd.DataFrame:
@@ -65,11 +79,28 @@ def compute_stats(texts: dict[str, list[str]], count_tokens: TokenizeFn) -> pd.D
 NEEDS_MISTRAL_REGEX_FIX = ("mistralai/Mistral-Nemo-Instruct-2407",)
 
 
-def load_tokenizer(repo: str):
+def load_tokenizer(repo: str, revision: str | None = None):
     from transformers import AutoTokenizer
 
     kwargs = {"fix_mistral_regex": True} if repo in NEEDS_MISTRAL_REGEX_FIX else {}
-    return AutoTokenizer.from_pretrained(repo, **kwargs)
+    return AutoTokenizer.from_pretrained(repo, revision=revision, **kwargs)
+
+
+def repo_revision(repo: str) -> str | None:
+    """Repo'nun su anki commit'i: tokenizer dosyalari degisirse sonuc da degisir -> kaydet ve sabitle."""
+    from huggingface_hub import HfApi
+
+    try:
+        return HfApi().model_info(repo).sha
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def lib_versions() -> dict:
+    import tokenizers
+    import transformers
+
+    return {"transformers": transformers.__version__, "tokenizers": tokenizers.__version__}
 
 
 def hf_counter(tok) -> TokenizeFn:
@@ -85,18 +116,26 @@ def main() -> None:
     table = pd.read_parquet(DATA_DIR / "flores_parallel.parquet")
     texts = {lang: table[lang].tolist() for lang in LANGS}
 
-    results, skipped = [], []
+    results, counts, skipped = [], [], []
+    libs = lib_versions()
     for label, repo in MODELS.items():
         try:
-            tok = load_tokenizer(repo)
+            rev = repo_revision(repo)
+            tok = load_tokenizer(repo, rev)
             df = compute_stats(texts, hf_counter(tok))
+            cnt = sentence_counts(texts, hf_counter(tok))
         except Exception as e:  # noqa: BLE001 -- gated, silinmis repo vb. -> atla, raporla
             skipped.append(f"{label}: {type(e).__name__}: {str(e).splitlines()[0][:90]}")
             continue
         df.insert(0, "model", label)
         df.insert(1, "repo", repo)
         df.insert(2, "vocab_size", len(tok))
+        df.insert(3, "revision", rev)
+        df.insert(4, "tokenizer_class", type(tok).__name__)
+        for k, v in libs.items():
+            df[k] = v
         results.append(df)
+        counts.append(cnt.assign(model=label))
         tr = df.set_index("lang").loc["tur_Latn"]
         print(f"{label:20s} vocab {len(tok):>7,} | TR fertility {tr.fertility:.2f}"
               f" | TR/EN token {tr.tax_vs_eng:.2f}x")
@@ -111,6 +150,7 @@ def main() -> None:
     out = pd.concat(results, ignore_index=True)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(OUT, index=False)
+    pd.concat(counts, ignore_index=True).to_csv(COUNTS, index=False)
     print(f"\nkaydedildi: {OUT}")
     pivot = out.pivot(index="model", columns="lang", values="tax_vs_eng").round(2)
     print("\nToken orani (dil / Ingilizce):")

@@ -5,6 +5,9 @@ __pycache__/
 .ruff_cache/
 results/*
 !results/.gitkeep
+!results/tokenizer_tax.csv
+!results/tokenizer_langs.csv
+!results/tokenizer_counts.csv.gz
 *.safetensors
 *.gguf
 .env
@@ -12,10 +15,4 @@ results/*
 # yerel kurulum scriptleri
 kurulum.py
 adim_*.py
-# FLORES+ kapili veri: asla commit edilmez
 data/flores/
-data/eval/eval_set.jsonl
-results_yedek/
-inceleme.md
-*.tar.gz
-data/hf/*.jsonl
