@@ -39,3 +39,18 @@ def test_llamacpp_cmd_full_offload_slots_and_template():
     assert "--chat-template-file" in cmd and "trbench-trendyol-7b-q4_k_m" in cmd
     g = next(m for m in cfg.models if m.name == "gemma-2-9b")
     assert llamacpp_cmd(cfg, g, Path("g.gguf"))[llamacpp_cmd(cfg, g, Path("g.gguf")).index("-np") + 1] == "2"
+
+
+def test_vllm_extra_args_from_config(monkeypatch):
+    from pathlib import Path
+
+    import trbench.runner as R
+    seen = {}
+    monkeypatch.setattr(R.subprocess, "Popen", lambda cmd, **k: seen.setdefault("cmd", cmd))
+    monkeypatch.setattr(R, "LOGS", Path("."))
+    monkeypatch.delenv("VLLM_EXTRA", raising=False)
+    cfg = load("configs/gpu_vllm.yaml")
+    R.start_vllm(cfg, cfg.models[0], Path("m"))
+    cmd = seen["cmd"]
+    assert cmd[cmd.index("--max-num-batched-tokens") + 1] == "2048" and "--enforce-eager" in cmd
+    Path("vllm_trbench-mistral-7b-v0.3-awq-int4.log").unlink(missing_ok=True)

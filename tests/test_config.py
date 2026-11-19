@@ -6,7 +6,7 @@ from pydantic import ValidationError
 
 from trbench.config import GPU2_PLAN_CAP_GB, SERVICE_RESERVE_GB, Phase3, load
 
-CONFIGS = ["configs/phase3.yaml", "configs/gpu_vllm.yaml", "configs/gpu_llamacpp.yaml",
+CONFIGS = ["configs/phase3.yaml", "configs/gpu_vllm.yaml", "configs/gpu_llamacpp.yaml", "configs/gpu_probe_vllm.yaml",
            "configs/gpu_probe.yaml"]
 
 

@@ -1,0 +1,16 @@
+# vLLM bellek denemesi (19 Kasim): Mistral AWQ basladi (GPU 2 tepe 10.6 GB), Qwen AWQ baslamadi.
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.20
+enforce_eager: true
+extra_args: [--max-num-batched-tokens, "2048"]
+max_model_len: 2048
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [8]
+langs: [tr]
+repeats: 1
+results: results/gpu_probe_vllm.jsonl
+models:
+  - {name: mistral-7b-v0.3, quant: awq-int4, params_b: 7.2, repo: solidrust/Mistral-7B-Instruct-v0.3-AWQ, weights_gb_actual: 4.2}
+  - {name: qwen2.5-7b, quant: awq-int4, params_b: 7.6, repo: Qwen/Qwen2.5-7B-Instruct-AWQ, weights_gb_actual: 5.6}

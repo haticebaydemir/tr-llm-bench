@@ -48,6 +48,7 @@ class Phase3(BaseModel):
     port: int
     gpu_memory_utilization: float | None = None    # sadece vLLM
     enforce_eager: bool = False                    # sadece vLLM
+    extra_args: list[str] = []                     # engine'e aynen gecer (or. --max-num-batched-tokens 2048)
     max_model_len: int = Field(ge=512)             # llama.cpp: slot basina baglam
     max_tokens: int = Field(ge=16)
     max_num_seqs: int = Field(ge=1)

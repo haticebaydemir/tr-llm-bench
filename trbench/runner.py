@@ -137,6 +137,7 @@ def start_vllm(cfg: Phase3, m: ModelSpec, path: Path) -> subprocess.Popen:
            "--max-model-len", str(cfg.max_model_len),
            "--gpu-memory-utilization", str(cfg.gpu_memory_utilization),
            "--max-num-seqs", str(cfg.max_num_seqs)]
+    cmd += cfg.extra_args + os.environ.get("VLLM_EXTRA", "").split()
     if cfg.enforce_eager:
         cmd.append("--enforce-eager")
     log = (LOGS / f"vllm_{served_name(m)}.log").open("w")
@@ -150,7 +151,7 @@ def llamacpp_cmd(cfg: Phase3, m: ModelSpec, gguf: Path) -> list[str]:
            "-c", str(cfg.max_model_len * nseq), "-np", str(nseq), "-t", "8"]
     if m.chat_template:
         cmd += ["--chat-template-file", m.chat_template]
-    return cmd
+    return cmd + cfg.extra_args
 
 
 def start_llamacpp(cfg: Phase3, m: ModelSpec, gguf: Path) -> subprocess.Popen:
