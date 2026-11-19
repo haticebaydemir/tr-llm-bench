@@ -1,0 +1,17 @@
+# Engine karsilastirmasi, vLLM tarafi: 4-bit AWQ, CUDA graph KAPALI (--enforce-eager),
+# GPU 2 payi ~8 GB. Ayni modeller configs/gpu_llamacpp.yaml'da Q4_K_M ile.
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.20
+enforce_eager: true
+max_model_len: 2048
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [1, 4, 8]
+langs: [tr, en]
+repeats: 3
+results: results/gpu_vllm.jsonl
+models:
+  - {name: qwen2.5-7b, quant: awq-int4, params_b: 7.6, repo: Qwen/Qwen2.5-7B-Instruct-AWQ, weights_gb_actual: 5.6}
+  - {name: llama-3.1-8b, quant: awq-int4, params_b: 8.0, repo: hugging-quants/Meta-Llama-3.1-8B-Instruct-AWQ-INT4, weights_gb_actual: 5.7}
+  - {name: mistral-7b-v0.3, quant: awq-int4, params_b: 7.2, repo: solidrust/Mistral-7B-Instruct-v0.3-AWQ, weights_gb_actual: 4.2}

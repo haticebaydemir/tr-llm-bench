@@ -38,7 +38,7 @@ class GuardConfig:
     # Biz her zaman ondan ONCE duruyoruz: 17000 MiB.
     bench_gpu_max_total_mib: int = 17000
     # Oturum oncesi: GPU 2'de servisin normal yukunden fazlasi olmamali.
-    preflight_bench_max_used_mib: int = 5000
+    preflight_bench_max_used_mib: int = 8000   # servisin olculen tepesi 7.03 GB
     min_root_free_gb: float = 100.0
     max_disk3_used_pct: float = 85.0
     # Korunan servisin saglik adresi: koda degil ortam degiskenine yazilir.

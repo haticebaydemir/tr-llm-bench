@@ -1,4 +1,4 @@
-"""Faz 3 calistiricisi: config'teki her model icin vLLM'i GPU 2'de baslatir,
+"""GPU calistiricisi: config'teki her model icin engine'i (vLLM ya da llama.cpp) GPU 2'de baslatir,
 tum (dil x esanlilik x tekrar) kosularini yapar, sonucu satir satir kaydeder.
 
 Gece boyunca gozetimsiz calisacagi icin:
@@ -20,6 +20,7 @@ import json
 import os
 import platform
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,15 +35,15 @@ ROOT = Path("/disk3/trbench")
 MODELS_DIR = ROOT / "models"
 LOGS = ROOT / "logs"
 VLLM = ROOT / "venv-vllm/bin/vllm"
-RESULTS = Path("results/phase3.jsonl")
+LLAMA_CUDA = ROOT / "llama.cpp/build-cuda/bin/llama-server"
 EVAL = Path("data/eval/eval_set.jsonl")
-KEY_FIELDS = ("model", "quant", "lang", "concurrency", "repeat")
+KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat")
 
 
 # ---------- Saf yardimcilar (testli) ----------
 
 def run_key(row: dict) -> tuple:
-    return tuple(row[k] for k in KEY_FIELDS)
+    return tuple(row.get(k, "vllm" if k == "engine" else None) for k in KEY_FIELDS)
 
 
 def done_keys(path: Path) -> set[tuple]:
@@ -84,7 +85,41 @@ def env_meta() -> dict:
     return {"gpu": smi, "vllm": ver, "host": platform.node()}
 
 
-def download(m: ModelSpec) -> tuple[Path, str]:
+def gpu2_used_mib() -> int | None:
+    out = subprocess.run(["nvidia-smi", "-i", "2", "--query-gpu=memory.used",
+                          "--format=csv,noheader,nounits"],
+                         check=False, capture_output=True, text=True).stdout.strip()
+    return int(out) if out.isdigit() else None
+
+
+class PeakSampler:
+    """Kosu boyunca GPU 2 TOPLAM bellegini (servis dahil) 1 sn arayla izler; tepeyi tutar."""
+
+    def __init__(self) -> None:
+        self.peak = 0
+        self._stop = threading.Event()
+        self._t = threading.Thread(target=self._loop, daemon=True)
+
+    def _loop(self) -> None:
+        while not self._stop.is_set():
+            v = gpu2_used_mib()
+            if v:
+                self.peak = max(self.peak, v)
+            self._stop.wait(1.0)
+
+    def __enter__(self) -> PeakSampler:  # noqa: PYI034
+        self._t.start()
+        return self
+
+    def __exit__(self, *exc: object) -> None:
+        self._stop.set()
+        self._t.join(timeout=5)
+
+
+def download(m: ModelSpec, engine: str) -> tuple[Path, str]:
+    if engine == "llamacpp":
+        from trbench.eval.gguf import download_model
+        return download_model(m.repo, m.quant), ("local" if Path(m.repo).is_dir() else m.repo)
     from huggingface_hub import HfApi, snapshot_download
 
     rev = HfApi().model_info(m.repo).sha
@@ -102,8 +137,26 @@ def start_vllm(cfg: Phase3, m: ModelSpec, path: Path) -> subprocess.Popen:
            "--max-model-len", str(cfg.max_model_len),
            "--gpu-memory-utilization", str(cfg.gpu_memory_utilization),
            "--max-num-seqs", str(cfg.max_num_seqs)]
+    if cfg.enforce_eager:
+        cmd.append("--enforce-eager")
     log = (LOGS / f"vllm_{served_name(m)}.log").open("w")
     return subprocess.Popen(cmd, env=env, stdout=log, stderr=subprocess.STDOUT)
+
+
+def llamacpp_cmd(cfg: Phase3, m: ModelSpec, gguf: Path) -> list[str]:
+    nseq = max(cfg.conc(m))
+    cmd = [str(LLAMA_CUDA), "-m", str(gguf), "--alias", served_name(m),
+           "--host", "127.0.0.1", "--port", str(cfg.port), "-ngl", "99",
+           "-c", str(cfg.max_model_len * nseq), "-np", str(nseq), "-t", "8"]
+    if m.chat_template:
+        cmd += ["--chat-template-file", m.chat_template]
+    return cmd
+
+
+def start_llamacpp(cfg: Phase3, m: ModelSpec, gguf: Path) -> subprocess.Popen:
+    env = dict(os.environ, CUDA_DEVICE_ORDER="PCI_BUS_ID", CUDA_VISIBLE_DEVICES="2")
+    log = (LOGS / f"llamacpp_{served_name(m)}.log").open("w")
+    return subprocess.Popen(llamacpp_cmd(cfg, m, gguf), env=env, stdout=log, stderr=subprocess.STDOUT)
 
 
 def wait_healthy(proc: subprocess.Popen, port: int, timeout_s: int = 600) -> bool:
@@ -131,10 +184,11 @@ def stop(proc: subprocess.Popen) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("config", nargs="?", default="configs/phase3.yaml")
+    ap.add_argument("config", nargs="?", default="configs/gpu_llamacpp.yaml")
     cfg = load(ap.parse_args().config)
+    out = Path(cfg.results)
     items = [json.loads(x) for x in EVAL.read_text(encoding="utf-8").splitlines()]
-    done = done_keys(RESULTS)
+    done = done_keys(out)
     meta = env_meta()
     LOGS.mkdir(parents=True, exist_ok=True)
 
@@ -144,38 +198,42 @@ def main() -> None:
         if not todo:
             print(f"[runner] {m.name}/{m.quant}: hepsi bitmis, atla", flush=True)
             continue
-        base = {"model": m.name, "quant": m.quant, "repo": m.repo, **meta}
+        base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
+                "enforce_eager": cfg.enforce_eager, **meta}
         try:
-            path, rev = download(m)
+            path, rev = download(m, cfg.engine)
         except Exception as e:  # noqa: BLE001 -- gated, silinmis repo: kaydet, devam
-            append(RESULTS, {**base, "status": "download_failed", "error": str(e)[:300],
+            append(out, {**base, "status": "download_failed", "error": str(e)[:300],
                              "lang": None, "concurrency": None, "repeat": None})
             print(f"[runner] {m.name}/{m.quant}: INDIRILEMEDI -> {e}", flush=True)
             continue
 
-        proc = start_vllm(cfg, m, path)
+        idle = gpu2_used_mib()
+        proc = (start_llamacpp if cfg.engine == "llamacpp" else start_vllm)(cfg, m, path)
         if not wait_healthy(proc, cfg.port):
             stop(proc)
-            append(RESULTS, {**base, "revision": rev, "status": "engine_failed",
+            append(out, {**base, "revision": rev, "status": "engine_failed",
                              "lang": None, "concurrency": None, "repeat": None,
-                             "error": f"log: vllm_{served_name(m)}.log"})
-            print(f"[runner] {m.name}/{m.quant}: vLLM BASLAMADI (V100 destegi?)", flush=True)
+                             "error": f"log: {cfg.engine}_{served_name(m)}.log"})
+            print(f"[runner] {m.name}/{m.quant}: {cfg.engine} BASLAMADI", flush=True)
             continue
 
         try:
             for r in todo:
                 if proc.poll() is not None:
-                    raise SystemExit("[runner] vLLM durdu (guard?) -> runner da duruyor")
+                    raise SystemExit("[runner] engine durdu (guard?) -> runner da duruyor")
                 prompts = prompts_for(items, r["lang"], r["n_requests"])
-                results, wall = asyncio.run(load_run(
-                    prompts, f"http://127.0.0.1:{cfg.port}", served_name(m),
-                    r["concurrency"], cfg.max_tokens))
+                with PeakSampler() as ps:
+                    results, wall = asyncio.run(load_run(
+                        prompts, f"http://127.0.0.1:{cfg.port}", served_name(m),
+                        r["concurrency"], cfg.max_tokens))
                 s = summarize(results, wall)
-                append(RESULTS, {**base, **r, "revision": rev, "status": "ok", **s,
+                append(out, {**base, **r, "revision": rev, "status": "ok", **s,
+                                 "gpu2_idle_mib": idle, "gpu2_peak_mib": ps.peak,
                                  "ts": datetime.now(timezone.utc).isoformat()})
-                print(f"[runner] {m.name}/{m.quant} {r['lang']} c={r['concurrency']} "
-                      f"#{r['repeat']}: {s['tokens_per_s']:.0f} tok/s, "
-                      f"TTFT {s['ttft_p50_ms']:.0f} ms, hata {s['errors']}", flush=True)
+                print(f"[runner] {cfg.engine} {m.name}/{m.quant} {r['lang']} c={r['concurrency']} "
+                      f"#{r['repeat']}: {s['tokens_per_s']:.0f} tok/s, TTFT {s['ttft_p50_ms']:.0f} ms, "
+                      f"GPU2 tepe {ps.peak} MiB, hata {s['errors']}", flush=True)
         finally:
             stop(proc)
 

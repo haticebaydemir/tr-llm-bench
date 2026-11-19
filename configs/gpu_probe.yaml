@@ -1,0 +1,13 @@
+# 15 dakikalik deneme: EN BUYUK payli model (Gemma-2-9B, llama.cpp) yuk altinda;
+# gpu2_peak_mib GPU 2 TOPLAMINI kaydeder. 15.5 GB'i asarsa GPU 2 plani iptal.
+engine: llamacpp
+port: 18010
+max_model_len: 1536
+max_tokens: 256
+max_num_seqs: 2
+concurrency: [2]
+langs: [tr]
+repeats: 2
+results: results/gpu_probe.jsonl
+models:
+  - {name: gemma-2-9b, quant: q4_k_m, params_b: 9.2, repo: /disk3/trbench/gguf/gemma-2-9b, weights_gb_actual: 5.8, kv_kb_per_token: 344, concurrency: [2]}
