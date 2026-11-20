@@ -57,7 +57,16 @@ def parse_number(response: str, lang: str) -> float | None:
     return to_number(raw, lang) if raw else None
 
 
+_THINK = re.compile(r"<think>.*?(</think>|$)", re.DOTALL)
+
+
+def strip_reasoning(response: str) -> str:
+    """Qwen3 gibi 'dusunen' modeller cevaptan once <think>...</think> yazabilir; puanlanan cevap degil."""
+    return _THINK.sub("", response).strip()
+
+
 def score(item: Item, response: str) -> bool:
+    response = strip_reasoning(response)
     if item.scorer == "choice":
         return parse_choice(response) == item.answer
     if item.scorer == "number":

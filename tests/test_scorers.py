@@ -46,3 +46,10 @@ def test_parse_choice_letter_then_newline_explanation():
     assert parse_choice('A\n\nMetinde belirtildiği gibi, bir deneyin amacı...') == "A"
     assert parse_choice("D\nBecause the text says so.") == "D"
     assert parse_choice("A good answer is C) because") == "C"   # 'A' artikeli hala sayilmaz
+
+
+def test_reasoning_block_is_not_scored():
+    from trbench.eval.scorers import strip_reasoning
+    assert strip_reasoning("<think>\nA mi B mi?\n</think>\n\nCevap: C") == "Cevap: C"
+    assert strip_reasoning("<think>bitmedi") == ""
+    assert strip_reasoning("Cevap: B") == "Cevap: B"

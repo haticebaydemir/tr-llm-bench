@@ -112,14 +112,15 @@ def main() -> None:
     ap.add_argument("--label", required=True, help="orn. qwen2.5-7b/q4_k_m")
     ap.add_argument("--parallel", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0, help="test icin: ilk N soru")
+    ap.add_argument("--out", type=Path, default=OUT, help="sonuc dosyasi (GPU olcumleri ayri tutulur)")
     a = ap.parse_args()
     items = load_items()
     if a.limit:
         items = items[: a.limit]
     t0 = time.time()
     meta = {**provenance(), "eval_sha": file_sha256(EVAL), **server_meta(a.url)}
-    n = asyncio.run(run(items, a.url, a.label, a.parallel, OUT, meta=meta))
-    rows = [json.loads(x) for x in OUT.read_text(encoding="utf-8").splitlines()]
+    n = asyncio.run(run(items, a.url, a.label, a.parallel, a.out, meta=meta))
+    rows = [json.loads(x) for x in a.out.read_text(encoding="utf-8").splitlines()]
     print(f"{n} soru soruldu, {time.time() - t0:.0f} sn")
     for (lab, cat, lang), (ok, tot) in sorted(accuracy(rows).items()):
         if lab == a.label:
