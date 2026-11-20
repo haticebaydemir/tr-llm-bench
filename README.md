@@ -53,18 +53,88 @@ library versions. All other tokenizers reproduced exactly.
 
 ![Tokenizer tax](docs/tokenizer_tax_en.png)
 
-## 2. Serving performance (vLLM, V100)
+## 2. Serving performance on a shared V100
 
-Load tests use fixed output length (`min_tokens` + `ignore_eos`) and streaming TTFT.
+Load tests use fixed output length (`min_tokens` + `ignore_eos`, 256 tokens) and streaming TTFT.
 Raw tok/s is reported together with **content throughput = tok/s ÷ tax**,
 because Turkish tokens carry less content than English ones.
+
+The GPU was shared with a production service. The benchmark ran on one V100 within a budget of
+about 8 GB, under a guard that stops it if the other GPUs or the service are disturbed. Peak total
+memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB). 138 runs, 0 errors.
+
+### 2a. Seven models, llama.cpp, Q4_K_M
+
+Median of 3 repeats. Cost assumes **$1 per GPU-hour** (scale linearly to your price) at full load;
+Turkish words per second = tokens ÷ Turkish tokens per word on FLORES+.
+
+| Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR content tok/s | TTFT p50 TR (ms) | GPU 2 peak (GB) | $ per 1k TR words @ $1/h |
+|---|---|---|---|---|---|---|---|---|
+| Trendyol-7B | 35 | 8 | 130 | 123 | **118** | 427 | 10.3 | 0.0040 |
+| Aya-Expanse-8B | 32 | 8 | 109 | 115 | **90** | 571 | 11.6 | 0.0047 |
+| Cosmos-TR-Llama-8B | 34 | 8 | 122 | 126 | **87** | 493 | 11.3 | 0.0049 |
+| Llama-3.1-8B | 34 | 8 | 121 | 123 | **86** | 636 | 12.4 | 0.0049 |
+| Qwen2.5-7B | 34 | 8 | 130 | 130 | **80** | 249 | 9.9 | 0.0054 |
+| Mistral-7B-v0.3 | 35 | 8 | 127 | 128 | **57** | 683 | 11.0 | 0.0082 |
+| Gemma-2-9B | 25 | 2 | 43 | 42 | **30** | 531 | 12.9 | 0.0139 |
+
+![Turkish content per second on GPU](docs/gpu_content.png)
+
+- **Same engine, same GPU, similar raw speed (121–130 tok/s at 8 concurrent requests), yet Turkish
+  content per second ranges from 57 to 118.** The tokenizer, not the model size, decides how much
+  Turkish a GPU-hour buys: Mistral-7B costs about twice as much per Turkish word as Trendyol.
+- Gemma-2-9B runs at 2 concurrent requests: its KV cache (~344 KB per token) does not fit 8 in the budget.
+- Trendyol's tax is taken from the current tokenizer run (1.10); see note ¹ in section 1.
+
+### 2b. Engine comparison: vLLM vs llama.cpp (Mistral-7B, 4-bit)
+
+vLLM with AWQ-int4 in eager mode (no CUDA graphs, which need more memory than the budget) against
+llama.cpp with Q4_K_M, same model, same GPU, same budget.
+
+| Concurrency | Lang | llama.cpp tok/s | vLLM tok/s | vLLM vs llama.cpp | TTFT p50 llama.cpp / vLLM (ms) |
+|---|---|---|---|---|---|
+| 1 | EN | 36 | 26 | -29% | 89 / 100 |
+| 1 | TR | 35 | 28 | -20% | 117 / 98 |
+| 4 | EN | 85 | 100 | +18% | 218 / 170 |
+| 4 | TR | 76 | 101 | +33% | 328 / 189 |
+| 8 | EN | 128 | 199 | +56% | 560 / 248 |
+| 8 | TR | 127 | 152 | +20% | 683 / 2482 |
+
+- **llama.cpp wins for a single user, vLLM wins under load** (+33% Turkish at 4 requests, +56% English at 8):
+  without CUDA graphs vLLM pays a per-step overhead that batching later amortizes.
+- **Under the tight budget, Turkish loses vLLM's advantage at 8 requests.** English reaches 199 tok/s
+  with a 0.25 s first token; Turkish drops to 152 tok/s and the first token takes 2.5 s.
+  The likely cause: Mistral splits Turkish into 2.2× more tokens, so the same requests need more
+  KV-cache blocks, and with only ~8 GB vLLM has to queue them. The tokenizer tax shows up as waiting time.
+- Only Mistral could be compared: Llama-3.1 and Qwen2.5 AWQ did not start within the budget.
+  Their 128k–152k vocabularies keep large embedding and output layers in 16-bit, so loading took
+  6.5 GiB and left no room for KV cache (vLLM reported −1.01 GiB available).
+
+### 2c. Context length on GPU (llama-bench)
+
+Median of 3 repeats per cell; the GPU is shared, and single repeats occasionally dropped
+(e.g. 37, 37, 21 tok/s), which the median ignores.
+
+| Model | Decode tok/s, empty context | at 4,096 tokens of context | Change | Prefill tok/s (4,096-token prompt) |
+|---|---|---|---|---|
+| Aya-Expanse-8B | 33.1 | 30.9 | -7% | 702 |
+| Llama-3.1-8B | 35.9 | 33.2 | -8% | 704 |
+| Cosmos-TR-Llama-8B | 35.9 | 33.1 | -8% | 703 |
+| Mistral-7B-v0.3 | 38.3 | 35.2 | -8% | 705 |
+| Trendyol-7B | 37.8 | 34.8 | -8% | 706 |
+| Qwen2.5-7B | 37.2 | 33.6 | -10% | 752 |
+| Gemma-2-9B | 27.1 | 23.3 | -14% | 436 |
+
+- Decoding with 4,096 tokens already in context is 7–10% slower (Gemma: 14%). Since Turkish needs
+  1.1–2.2× more tokens for the same text, it reaches that point sooner.
+
+### 2d. Earlier run on an exclusive GPU (historical)
 
 Qwen2.5-7B-Instruct, vLLM, one V100 32 GB, 256 output tokens per request, median of 3 repeats.
 *Provenance:* measured on 16 Nov 2026 with an earlier version of `configs/phase3.yaml`
 (GPU memory utilization 0.80, CUDA graphs on). That setting used more memory than the shared
-server's budget allows, so the config was retired and now holds the in-budget settings;
-these numbers cannot be reproduced from the current config and are kept as a historical result.
-**Content tok/s = TR tok/s ÷ 1.62** (Qwen's tokenizer tax), i.e. how much English-equivalent content Turkish users get.
+server's budget allows, so the config was retired; these numbers cannot be reproduced from the
+current config and are kept as a historical result. Content tok/s = TR tok/s ÷ 1.62.
 
 | Quant | Concurrency | EN tok/s | TR tok/s | TR content tok/s | TTFT p50 EN / TR (ms) |
 |---|---|---|---|---|---|
@@ -225,8 +295,9 @@ tax is paid again in long contexts.
 ## Summary
 
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
-tokens, but the tokenizer delivers up to ~38% less content per second, and again more slowly
-in long contexts; quantization down to Q4_K_M costs Turkish no more than English in any of
+tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (57 to 118
+content tok/s on the same GPU, a 2× cost difference per Turkish word) and, under load, how long
+users wait for the first token; quantization down to Q4_K_M costs Turkish no more than English in any of
 seven models; and the remaining quality gap lies in the base model (small for Gemma-2-9B,
 large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
 
@@ -235,9 +306,11 @@ meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
 
 ## Limitations
 
-- GPU serving covers Qwen2.5-7B (fp16, AWQ-int4) and a partial Qwen2.5-14B run on one V100.
-  The planned engine comparison and multi-model GPU matrix were dropped: the GPU was shared
-  with a production service, and the benchmark never runs at its expense.
+- GPU serving ran within ~8 GB of one shared V100: 4-bit models up to 9B, at most 8 concurrent
+  requests (Gemma: 2). fp16/Q8 on GPU, models above 9B and high concurrency did not fit the budget.
+  The engine comparison covers only Mistral-7B (the only AWQ model that started), with vLLM in eager mode.
+- One GPU generation (V100, SM70): newer GPUs change absolute speeds and possibly the engine ranking;
+  the tokenizer effect on content throughput does not depend on the GPU.
 - Quality is measured on CPU with llama.cpp (`b12470`), greedy decoding, one run per configuration.
   GGUF files are built from the original weights with that same release.
 - 250 paired items give 95% intervals of about ±4 points; a smaller quantization tax cannot be excluded.
@@ -255,6 +328,8 @@ python -m trbench.tokenizer_tax.fertility
 python -m trbench.eval.build
 bash scripts/phase4_cpu.sh Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b
 python -m trbench.eval.analysis --model qwen2.5-7b
+# GPU (on the server): bash scripts/gpu_bench.sh configs/gpu_llamacpp.yaml, then
+python -m trbench.eval.gpu_report
 ```
 
 Every result row records where it came from: `git_commit` (and `git_dirty`), the SHA-256 of

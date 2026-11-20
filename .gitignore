@@ -8,6 +8,9 @@ results/*
 !results/tokenizer_tax.csv
 !results/tokenizer_langs.csv
 !results/tokenizer_counts.csv.gz
+!results/gpu_llamacpp.jsonl
+!results/gpu_vllm.jsonl
+!results/gpu_length.jsonl
 *.safetensors
 *.gguf
 .env

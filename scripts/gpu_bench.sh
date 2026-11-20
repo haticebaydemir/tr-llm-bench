@@ -16,8 +16,10 @@ $PY -m trbench.config "$CFG"                          # butceyi asan config bura
 $PY -m trbench.guard --preflight                      # sunucu uygun degilse burada durur
 
 KILL_BENCH="pkill -f trbench.runner; pkill -f 'alias trbench-'; pkill -f 'served-model-name trbench-'"
+# pkill -f YOK: komut satirinda bu yaziyi gecen her sureci (bu scripti cagiran zinciri de) oldurur.
+GUARD=""
 cleanup() {
-  pkill -f trbench.guard || true
+  [ -n "$GUARD" ] && kill "$GUARD" 2>/dev/null || true
   pkill -f 'alias trbench-' || true
   pkill -f 'served-model-name trbench-' || true
   sleep 8; echo "[gpu] TEMIZLENDI $(date)"; nvidia-smi -i 2 --query-gpu=memory.used --format=csv,noheader
