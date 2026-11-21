@@ -1,5 +1,7 @@
 # TR-LLM Bench
 
+**English** · [Türkçe](README.tr.md)
+
 How much does Turkish cost to serve on open LLMs, and how much quality does
 quantization take away from Turkish compared with English?
 
@@ -36,7 +38,7 @@ per-sentence token counts (numbers only, no text) in `results/tokenizer_counts.c
 
 A 1.62 tax means the same Turkish content costs 62% more tokens: more latency,
 less effective context and lower content throughput. Trendyol's Turkish vocabulary
-extension (32,768 → 44,312 tokens) cuts the tax to roughly Aya's level.
+extension (32,768 → 44,312 tokens) cuts the tax to 1.10, the lowest of the general models.
 
 **The cost is not specific to Turkish.** Turkish needs fewer tokens than the other two
 agglutinative languages, Finnish and Hungarian, in 11 of 13 distinct tokenizers (no interval overlaps);
@@ -303,8 +305,8 @@ Q4_K_M, the fastest setting of each model:
 
 - **Q4_K_M costs at most 1 point of Turkish accuracy in every model** and is its fastest
   setting.
-- **Gemma-2-9B Q4_K_M is the most accurate; Aya-Expanse-8B Q4_K_M is the next point on the quality–speed frontier**
-  (9.0 Turkish content tok/s at 76%), helped by the lowest tokenizer tax (1.21×).
+- **Gemma-2-9B Q4_K_M is the most accurate; Aya-Expanse-8B and Trendyol-7B Q4_K_M are the other points on the
+  quality–speed frontier** (9.0 Turkish content tok/s at 76%, and the most Turkish content per second, 11.3, at 50%).
 - Raw speed is not content speed: Mistral-7B is the fastest model in tokens (13.0 tok/s) but
   its 2.21× tax leaves it among the slowest in Turkish content (5.9).
 - fp16 CPU speed depends on memory placement: Cosmos and Mistral fp16 measured 2.5 and
@@ -349,8 +351,9 @@ meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
   The engine comparison covers only Mistral-7B (the only AWQ model that started), with vLLM in eager mode.
 - One GPU generation (V100, SM70): newer GPUs change absolute speeds and possibly the engine ranking;
   the tokenizer effect on content throughput does not depend on the GPU.
-- Quality is measured on CPU with llama.cpp (`b12470`), greedy decoding, one run per configuration.
-  GGUF files are built from the original weights with that same release.
+- Quality uses llama.cpp (`b12470`), greedy decoding and one run per configuration: the quantization
+  comparison on CPU, the fourteen-model table on GPU. GGUF files are built from the original weights
+  with that same release (Qwen and the newer models: published GGUF files).
 - 250 paired items give 95% intervals of about ±4 points; a smaller quantization tax cannot be excluded.
 - Reading, knowledge and math use translated benchmarks; see the errata above.
 
