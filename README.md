@@ -255,6 +255,32 @@ accuracy has a 95% interval of about ±5 points, so neighbours in the table are 
   so it was rerun with `enable_thinking=false` (`configs/gpu_quality_rerun.txt`).
   Raw rows: `results/gpu_quality.jsonl`; `python -m trbench.eval.gpu_quality_report` rebuilds the table.
 
+### KV-cache quantization (GPU)
+
+Same Q4_K_M weights, same 550 items, llama.cpp with flash attention; only the KV cache type changes
+(`--cache-type-k/v` f16, q8_0, q4_0; `configs/gpu_kvcache.txt`). Memory is the peak on the benchmark GPU
+during each run; tax is measured against the f16 cache on 242 paired items, 95% bootstrap CI.
+
+| Model | KV cache | GPU memory (MiB) | TR loss | EN loss | KV tax [95% CI] |
+|---|---|---|---|---|---|
+| Gemma-2-9B | f16 | 12320 | – | – | – |
+| | q8_0 | 11076 | +0.4 | +0.0 | +0.4 [−0.8, +2.1] |
+| | q4_0 | 10404 | +0.0 | −1.7 | +1.7 [−0.8, +4.1] |
+| Qwen3-8B | f16 | 9736 | – | – | – |
+| | q8_0 | 9204 | −0.4 | +0.0 | −0.4 [−1.7, +0.8] |
+| | q4_0 | 8916 | +0.4 | −0.8 | +1.2 [−2.9, +5.4] |
+| Llama-3.1-8B | f16 | 9568 | – | – | – |
+| | q8_0 | 9096 | +0.4 | +2.5 | −2.1 [−5.4, +0.8] |
+| | q4_0 | 8840 | +5.4 | −0.4 | **+5.8 [+0.4, +11.2]** |
+
+- **q8_0 cache is free:** 0.5–1.2 GB less memory and no measurable change in either language on all three models.
+- **q4_0 cache saves up to 1.9 GB (Gemma-2-9B) and is safe on Gemma and Qwen3, but not on Llama-3.1-8B:**
+  Turkish accuracy drops 5.4 points while English does not move. It is the only interval in this project
+  that excludes zero, and only just; with six comparisons and one run per setting, treat it as a warning
+  to test q4_0 cache on your own model, not as an established effect.
+- Weight quantization to Q4_K_M showed no Turkish-specific loss (section 3); a 4-bit KV cache can.
+  `python -m trbench.eval.kv_report` reproduces the table.
+
 ### How much of the gap is the benchmark's fault?
 
 All 38 items that fp16 got wrong in Turkish but right in English were reviewed by hand:
