@@ -20,3 +20,4 @@ results/*
 kurulum.py
 adim_*.py
 data/flores/
+!results/gpu_kvcache.jsonl
