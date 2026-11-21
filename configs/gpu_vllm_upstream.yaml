@@ -1,0 +1,21 @@
+# Ayni olcum, upstream vLLM ile (V100 destekleyen son seri, 0.18.x). TRBENCH_VLLM=/disk3/trbench/venv-vllm-up/bin/vllm
+# Engine karsilastirmasi, vLLM tarafi: 4-bit AWQ, CUDA graph KAPALI (--enforce-eager),
+# GPU 2 payi ~8 GB (servisin tepesi 7 GB, plan tavani 15.5 GB).
+# 19 Kasim denemesi: bu payla SADECE kucuk sozluklu Mistral sigdi.
+#   Llama-3.1-8B AWQ: yuklenince 6.46 GiB (128k sozluk fp16) -> KV icin -1.01 GiB, baslamadi.
+#   Qwen2.5-7B AWQ (152k sozluk): ayni nedenle baslamadi.
+# Sigdirmak icin ayar ~0.25'e cikmali; o zaman GPU 2 toplami ~16.5 GB olur (tavan 15.5) -> yapilmadi.
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.20
+enforce_eager: true
+extra_args: [--max-num-batched-tokens, "2048"]
+max_model_len: 2048
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [1, 4, 8]
+langs: [tr, en]
+repeats: 3
+results: results/gpu_vllm_upstream.jsonl
+models:
+  - {name: mistral-7b-v0.3, quant: awq-int4, params_b: 7.2, repo: solidrust/Mistral-7B-Instruct-v0.3-AWQ, weights_gb_actual: 4.2}

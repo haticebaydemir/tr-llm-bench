@@ -5,7 +5,7 @@
 set -euo pipefail
 trap 'echo "[gpu] HATA: satir $LINENO, komut: $BASH_COMMAND" >&2' ERR
 CFG=${1:?config}
-cd /disk3/trbench/tr-llm-bench
+cd "$(dirname "$0")/.."                               # scriptin ait oldugu repo
 [ -f /disk3/trbench/env.local ] && source /disk3/trbench/env.local
 export HF_HOME=/disk3/trbench/hf TMPDIR=/disk3/trbench/tmp
 PY=/disk3/trbench/venv/bin/python

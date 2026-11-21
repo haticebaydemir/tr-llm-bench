@@ -1,0 +1,6 @@
+# KV-cache dogrulamasi (22 Kasim): Llama-3.1-8B'de q4_0 cache Turkce'yi dusurdu; ayni aileden iki model.
+#   bash scripts/night_22.sh
+/disk3/trbench/gguf/cosmos-tr-llama-8b cosmos-tr-llama-8b-kvf16 - -fa on
+/disk3/trbench/gguf/cosmos-tr-llama-8b cosmos-tr-llama-8b-kvq4 - -fa on --cache-type-k q4_0 --cache-type-v q4_0
+bartowski/Llama-3.2-3B-Instruct-GGUF llama-3.2-3b-kvf16 - -fa on
+bartowski/Llama-3.2-3B-Instruct-GGUF llama-3.2-3b-kvq4 - -fa on --cache-type-k q4_0 --cache-type-v q4_0

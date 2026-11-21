@@ -35,7 +35,8 @@ from trbench.provenance import file_sha256, provenance, sha256_text
 ROOT = Path("/disk3/trbench")
 MODELS_DIR = ROOT / "models"
 LOGS = ROOT / "logs"
-VLLM = ROOT / "venv-vllm/bin/vllm"
+# TRBENCH_VLLM: baska bir vLLM kurulumu (ör. upstream) icin
+VLLM = Path(os.environ.get("TRBENCH_VLLM", str(ROOT / "venv-vllm/bin/vllm")))
 LLAMA_CUDA = ROOT / "llama.cpp/build-cuda/bin/llama-server"
 EVAL = Path("data/eval/eval_set.jsonl")
 KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat", "fp")
