@@ -1,0 +1,3 @@
+# 21 Kasim: Qwen3-4B ilk kosuda --reasoning-budget 0'a ragmen etiketsiz "dusundu" (cevaplar yarim, %25).
+# Bu sefer sohbet sablonuna enable_thinking=false veriliyor.
+Qwen/Qwen3-4B-GGUF qwen3-4b - --chat-template-kwargs {"enable_thinking":false}

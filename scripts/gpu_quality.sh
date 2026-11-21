@@ -27,7 +27,7 @@ GUARD=$!
 sleep 3
 kill -0 "$GUARD" 2>/dev/null || { echo "[gq] guard baslamadi"; exit 1; }
 
-while read -r REPO NAME TPL <&3; do
+while read -r REPO NAME TPL MORE <&3; do
   kill -0 "$GUARD" 2>/dev/null || { echo "[gq] GUARD DURDU, olcum bitiriliyor"; break; }
   echo "[gq] $NAME basliyor $(date)"
   GGUF=$($PY -m trbench.eval.gguf "$REPO" q4_k_m 2>>"$L/gq_download.log" | tail -1)
@@ -35,7 +35,8 @@ while read -r REPO NAME TPL <&3; do
   SIZE=$(du -bc "$(dirname "$GGUF")"/"$(basename "$GGUF" | sed 's/-00001-of-.*//')"* | tail -1 | cut -f1)
   if awk -v s="$SIZE" -v m="$MAX_GB" 'BEGIN{exit !(s > m*1024^3)}'; then echo "[gq] $NAME: $SIZE bayt, butceye sigmaz, atlaniyor"; continue; fi
   if ss -ltn | grep -q ":$PORT "; then echo "[gq] HATA: port $PORT dolu"; break; fi
-  EXTRA=""; [ -n "${TPL:-}" ] && EXTRA="--chat-template-file $TPL"
+  # 3. sutun: sablon dosyasi ya da '-'; sonrasi llama-server'a aynen gecer
+  EXTRA="${MORE:-}"; [ -n "${TPL:-}" ] && [ "$TPL" != "-" ] && EXTRA="--chat-template-file $TPL $EXTRA"
   # --reasoning-budget 0: Qwen3 gibi modellerde <think> kapali (diger modellerde etkisiz)
   "$SERVER" -m "$GGUF" --host 127.0.0.1 --port $PORT -ngl 99 -c 8192 -np 4 -t 8 \
       --reasoning-budget 0 $EXTRA > "$L/gq_${NAME}.log" 2>&1 &
