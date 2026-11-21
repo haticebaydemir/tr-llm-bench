@@ -18,3 +18,20 @@ def test_board_computes_accuracy_and_content_speed(tmp_path, monkeypatch):
     write_space(b, "2026-11-18")
     page = (tmp_path / "space" / "index.html").read_text(encoding="utf-8")
     assert "qwen2.5-7b" in page and "-20.0" in page and "sdk: static" in (tmp_path / "space" / "README.md").read_text()
+
+
+def test_gpu_board_accuracy_ci_categories_and_content_speed():
+    from trbench.eval.report import gpu_board
+    q = []
+    for i in range(20):
+        for lang in ("tr", "en"):
+            q.append({"label": "qwen3-8b/q4_k_m", "id": f"math/{i}", "lang": lang, "category": "math",
+                      "correct": i < (15 if lang == "tr" else 18)})
+    q.append({"label": "qwen3-8b/q4_k_m", "id": "morphology/1", "lang": "tr", "category": "morphology", "correct": True})
+    s = [{"model": "qwen3-8b", "lang": "tr", "concurrency": c, "status": "ok", "tokens_per_s": v}
+         for c, v in ((1, 30), (8, 120), (8, 130), (8, 500))]
+    g = gpu_board(q, s, {"qwen3-8b": 1.6})
+    r = g[0]
+    assert (r["tr"], r["en"], r["math"], r["morph"]) == (75.0, 90.0, 75.0, 100.0)
+    assert r["tr_ci"] == 19.0                     # 1.96*sqrt(.75*.25/20)
+    assert r["gpu_tps"] == 130 and r["tr_content_tps"] == 81     # medyan(120,130,500)=130 /1.6

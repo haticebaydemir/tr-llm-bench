@@ -16,7 +16,7 @@ from trbench.eval.analysis import PAIRED, TRANSLATION_ERRORS, load
 
 SPEED = Path("results/cpu_speed.jsonl")
 PNG = Path("docs/pareto_cpu.png")
-TAX = {"qwen2.5-7b": 1.62, "trendyol-7b": 1.22, "llama-3.1-8b": 1.40, "gemma-2-9b": 1.40,
+TAX = {"qwen2.5-7b": 1.62, "trendyol-7b": 1.10, "llama-3.1-8b": 1.40, "gemma-2-9b": 1.40,
        "aya-expanse-8b": 1.21, "cosmos-tr-llama-8b": 1.40, "mistral-7b-v0.3": 2.21}
 NAME = re.compile(r"(?P<model>.+)-(?P<quant>fp16|q8_0|q4_k_m)\.gguf$")
 # Qwen'in resmi GGUF'lari (kendimiz uretmedik): qwen2.5-7b-instruct-q8_0-00001-of-00003.gguf

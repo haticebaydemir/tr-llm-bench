@@ -298,7 +298,7 @@ Q4_K_M, the fastest setting of each model:
 | **Aya-Expanse-8B** | 10.9 | 9.0 | 76 |
 | Llama-3.1-8B | 11.7 | 8.4 | 74 |
 | Cosmos-TR-Llama-8B | 11.9 | 8.5 | 72 |
-| Trendyol-7B v1.8 | 12.5 | 10.2 | 50 |
+| Trendyol-7B v1.8 | 12.5 | 11.3 | 50 |
 | Mistral-7B-v0.3 | 13.0 | 5.9 | 46 |
 
 - **Q4_K_M costs at most 1 point of Turkish accuracy in every model** and is its fastest
