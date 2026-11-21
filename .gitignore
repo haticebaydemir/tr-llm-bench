@@ -11,6 +11,7 @@ results/*
 !results/gpu_llamacpp.jsonl
 !results/gpu_vllm.jsonl
 !results/gpu_length.jsonl
+!results/gpu_quality.jsonl
 *.safetensors
 *.gguf
 .env

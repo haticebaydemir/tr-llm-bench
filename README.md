@@ -220,6 +220,41 @@ Quantization tax over 242 paired items (percentage points, positive = Turkish lo
     and the scorer was fixed to read a bare letter followed by a newline. All models were
     re-scored with the same rules; only Aya and 4 Gemma items changed.
 
+### Fourteen models on GPU (Q4_K_M)
+
+Same 550 items, llama.cpp on the shared V100 (`scripts/gpu_quality.sh`), greedy decoding.
+Seven newer models were added; the seven CPU models were rerun on GPU with the same GGUF files.
+Paired items without the 8 translation errors; morphology is Turkish only. With 242 pairs a single
+accuracy has a 95% interval of about ±5 points, so neighbours in the table are not distinguishable.
+
+| Model | TR | EN | TR − EN | Morphology | Same result as CPU |
+|---|---|---|---|---|---|
+| Gemma-2-9B | 90% | 89% | +1 | 88% | 99% |
+| Qwen3-8B | 81% | 92% | −11 | 92% | – |
+| Qwen2.5-7B | 79% | 88% | −10 | 60% | 98% |
+| Qwen3-4B | 77% | 91% | −14 | 70% | – |
+| Gemma-3-4B | 76% | 87% | −11 | 88% | – |
+| Aya-Expanse-8B | 76% | 86% | −10 | 92% | 97% |
+| Llama-3.1-8B | 74% | 85% | −11 | 44% | 95% |
+| Phi-4-mini | 70% | 88% | −19 | 64% | – |
+| Cosmos-TR-Llama-8B | 70% | 82% | −12 | 84% | 96% |
+| Trendyol-7B | 51% | 45% | +6 | 84% | 98% |
+| Llama-3.2-3B | 50% | 76% | −26 | 42% | – |
+| Granite-3.3-8B | 50% | 87% | −37 | 46% | – |
+| Ministral-8B | 48% | 81% | −34 | 72% | – |
+| Mistral-7B-v0.3 | 48% | 71% | −23 | 58% | 94% |
+
+- **GPU and CPU agree.** For the seven models measured on both, 94–99% of items get the same
+  right/wrong result and accuracy moves by at most 2 points: the quality numbers do not depend on the backend.
+- **Size is not the main factor for Turkish.** Gemma-3-4B and Qwen3-4B match or beat 8B models
+  (Llama-3.1, Cosmos), while Granite-3.3-8B and Ministral-8B lose 34–37 points from English to Turkish.
+- **English accuracy hides the gap.** Granite-3.3-8B is at 87% in English and 50% in Turkish;
+  an English benchmark would rank it next to Gemma-3-4B.
+- Two runs needed fixes, both documented in the code: Aya-Expanse printed its turn-end token as text
+  (cut and rescored, as on CPU), and Qwen3-4B kept reasoning in plain text despite `--reasoning-budget 0`,
+  so it was rerun with `enable_thinking=false` (`configs/gpu_quality_rerun.txt`).
+  Raw rows: `results/gpu_quality.jsonl`; `python -m trbench.eval.gpu_quality_report` rebuilds the table.
+
 ### How much of the gap is the benchmark's fault?
 
 All 38 items that fp16 got wrong in Turkish but right in English were reviewed by hand:
@@ -300,7 +335,8 @@ For a Turkish user of open 7–9B models: the engine serves Turkish as fast as E
 tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (57 to 119
 content tok/s on the same GPU, a 2× cost difference per Turkish word) and, under load, how long
 users wait for the first token; quantization down to Q4_K_M costs Turkish no more than English in any of
-seven models; and the remaining quality gap lies in the base model (small for Gemma-2-9B,
+seven models; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
+model size (4B Gemma-3 and Qwen3 beat several 8B models); and the remaining quality gap lies in the base model (small for Gemma-2-9B,
 large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
