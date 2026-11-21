@@ -49,7 +49,10 @@ def agreement(gpu: list[dict], cpu: list[dict]) -> dict[str, tuple[float, int]]:
 
 
 def main() -> None:
-    gpu, cpu = load(GPU), load(CPU)
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--file", type=Path, default=GPU)
+    gpu, cpu = load(ap.parse_args().file), load(CPU)
     t, cp, ag = table(gpu), table(cpu), agreement(gpu, cpu)
     print(f"GPU satiri: {len(gpu)}, model: {len(t)}\n")
     print("| Model | TR | EN | TR - EN | Morphology (TR) | CPU TR | Same result as CPU |")

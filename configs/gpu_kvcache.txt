@@ -1,0 +1,12 @@
+# KV-cache quantization ve Turkce (21 Kasim): ayni model, ayni agirlik; sadece KV cache tipi degisir.
+# Hepsinde flash attention acik (quantize V cache icin gerekli), boylece fark yalnizca cache tipinden gelir.
+#   OUT=results/gpu_kvcache.jsonl nohup bash scripts/gpu_quality.sh configs/gpu_kvcache.txt > /disk3/trbench/logs/gpu_kv.out 2>&1 &
+Qwen/Qwen3-8B-GGUF qwen3-8b-kvf16 - -fa on
+Qwen/Qwen3-8B-GGUF qwen3-8b-kvq8 - -fa on --cache-type-k q8_0 --cache-type-v q8_0
+Qwen/Qwen3-8B-GGUF qwen3-8b-kvq4 - -fa on --cache-type-k q4_0 --cache-type-v q4_0
+/disk3/trbench/gguf/llama-3.1-8b llama-3.1-8b-kvf16 - -fa on
+/disk3/trbench/gguf/llama-3.1-8b llama-3.1-8b-kvq8 - -fa on --cache-type-k q8_0 --cache-type-v q8_0
+/disk3/trbench/gguf/llama-3.1-8b llama-3.1-8b-kvq4 - -fa on --cache-type-k q4_0 --cache-type-v q4_0
+/disk3/trbench/gguf/gemma-2-9b gemma-2-9b-kvf16 - -fa on
+/disk3/trbench/gguf/gemma-2-9b gemma-2-9b-kvq8 - -fa on --cache-type-k q8_0 --cache-type-v q8_0
+/disk3/trbench/gguf/gemma-2-9b gemma-2-9b-kvq4 - -fa on --cache-type-k q4_0 --cache-type-v q4_0

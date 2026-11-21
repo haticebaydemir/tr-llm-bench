@@ -9,7 +9,7 @@ export HF_HOME=/disk3/trbench/hf TMPDIR=/disk3/trbench/tmp CUDA_DEVICE_ORDER=PCI
 PY=/disk3/trbench/venv/bin/python
 L=/disk3/trbench/logs; mkdir -p "$L" results
 SERVER=/disk3/trbench/llama.cpp/build-cuda/bin/llama-server
-PORT=18010; OUT=results/gpu_quality.jsonl; MAX_GB=6.2
+PORT=18010; OUT=${OUT:-results/gpu_quality.jsonl}; MAX_GB=6.2
 
 $PY -m trbench.guard --preflight || { echo "[gq] on kontrol gecmedi, baslamiyor"; exit 1; }
 GUARD=""
@@ -44,7 +44,7 @@ while read -r REPO NAME TPL MORE <&3; do
   if ! timeout 600 bash -c "until curl -sf 127.0.0.1:$PORT/health >/dev/null; do kill -0 $SPID || exit 1; sleep 3; done"; then
     echo "[gq] $NAME: sunucu acilmadi (log: $L/gq_${NAME}.log)"; kill $SPID 2>/dev/null; SPID=""; continue
   fi
-  echo "[gq] $NAME GPU2: $(nvidia-smi -i 2 --query-gpu=memory.used --format=csv,noheader)"
+  echo "[gq] $NAME GPU2: $(nvidia-smi -i 2 --query-gpu=memory.used --format=csv,noheader) | $(grep -m1 -o 'KV.*size *= *[0-9.]* MiB.*' "$L/gq_${NAME}.log")"
   $PY -m trbench.eval.run --url http://127.0.0.1:$PORT --label "$NAME/q4_k_m" --parallel 4 --out "$OUT" \
       | tail -12
   kill $SPID 2>/dev/null; wait $SPID 2>/dev/null; SPID=""
