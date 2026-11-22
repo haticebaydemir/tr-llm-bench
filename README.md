@@ -90,24 +90,34 @@ Turkish words per second = tokens ÷ Turkish tokens per word on FLORES+.
 
 ### 2b. Engine comparison: vLLM vs llama.cpp (Mistral-7B, 4-bit)
 
-vLLM with AWQ-int4 in eager mode (no CUDA graphs, which need more memory than the budget) against
-llama.cpp with Q4_K_M, same model, same GPU, same budget.
+Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need more memory than the budget):
 
-| Concurrency | Lang | llama.cpp tok/s | vLLM tok/s | vLLM vs llama.cpp | TTFT p50 llama.cpp / vLLM (ms) |
+- **llama.cpp** `b12470`, Q4_K_M.
+- **vLLM, V100 build, AWQ-int4.** Upstream vLLM rejects AWQ on V100 (it requires compute capability 7.5;
+  the V100 is 7.0), so this column comes from a vLLM build patched for V100 and cannot be reproduced with
+  a `pip install vllm`.
+- **vLLM 0.18.1 (upstream, PyPI), GPTQ-int4** (`RedHatAI/Mistral-7B-Instruct-v0.3-GPTQ-4bit`,
+  `--quantization gptq`). The last upstream series that still supports the V100; anyone can reproduce
+  this column (`configs/gpu_vllm_upstream_gptq.yaml`).
+
+| Concurrency | Lang | llama.cpp tok/s | vLLM AWQ (V100 build) tok/s | vLLM 0.18.1 GPTQ tok/s | TTFT p50 llama.cpp / AWQ / GPTQ (ms) |
 |---|---|---|---|---|---|
-| 1 | EN | 36 | 26 | -29% | 89 / 100 |
-| 1 | TR | 35 | 28 | -20% | 117 / 98 |
-| 4 | EN | 85 | 100 | +18% | 218 / 170 |
-| 4 | TR | 76 | 101 | +33% | 328 / 189 |
-| 8 | EN | 128 | 199 | +56% | 560 / 248 |
-| 8 | TR | 127 | 152 | +20% | 683 / 2482 |
+| 1 | EN | 36 | 26 | 30 | 89 / 100 / 78 |
+| 1 | TR | 35 | 28 | 29 | 117 / 98 / 85 |
+| 4 | EN | 85 | 100 | 114 | 218 / 170 / 220 |
+| 4 | TR | 76 | 101 | 108 | 328 / 189 / 235 |
+| 8 | EN | 128 | 199 | 137 | 560 / 248 / 298 |
+| 8 | TR | 127 | 152 | 107 | 683 / **2482** / **2157** |
 
-- **llama.cpp wins for a single user, vLLM wins under load** (+33% Turkish at 4 requests, +56% English at 8):
+- **llama.cpp wins for a single user, vLLM wins at 4 requests** (+33–41% Turkish with either vLLM):
   without CUDA graphs vLLM pays a per-step overhead that batching later amortizes.
-- **Under the tight budget, Turkish loses vLLM's advantage at 8 requests.** English reaches 199 tok/s
-  with a 0.25 s first token; Turkish drops to 152 tok/s and the first token takes 2.5 s.
-  The likely cause: Mistral splits Turkish into 2.2× more tokens, so the same requests need more
-  KV-cache blocks, and with only ~8 GB vLLM has to queue them. The tokenizer tax shows up as waiting time.
+- **At 8 requests under the tight budget, Turkish loses vLLM's advantage, and this holds on upstream vLLM too.**
+  With both vLLM builds the Turkish first token takes 2.2–2.5 s while English stays at 0.25–0.3 s; with upstream
+  GPTQ Turkish throughput (107 tok/s) even falls below llama.cpp (127). The likely cause: Mistral splits
+  Turkish into 2.2× more tokens, so the same requests need more KV-cache blocks, and with only ~8 GB vLLM has
+  to queue them. The tokenizer tax shows up as waiting time.
+- The two vLLM columns differ in both build and 4-bit format, so the gap between them (e.g. 199 vs 137 tok/s
+  in English at 8 requests) is not attributable to either alone.
 - Only Mistral could be compared: Llama-3.1 and Qwen2.5 AWQ did not start within the budget.
   Their 128k–152k vocabularies keep large embedding and output layers in 16-bit, so loading took
   6.5 GiB and left no room for KV cache (vLLM reported −1.01 GiB available).
@@ -377,7 +387,8 @@ meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
 
 - GPU serving ran within ~8 GB of one shared V100: 4-bit models up to 9B, at most 8 concurrent
   requests (Gemma: 2). fp16/Q8 on GPU, models above 9B and high concurrency did not fit the budget.
-  The engine comparison covers only Mistral-7B (the only AWQ model that started), with vLLM in eager mode.
+  The engine comparison covers only Mistral-7B (the only 4-bit vLLM model that fit), with vLLM in eager mode;
+  upstream vLLM runs on the V100 only up to 0.18.x and without AWQ.
 - One GPU generation (V100, SM70): newer GPUs change absolute speeds and possibly the engine ranking;
   the tokenizer effect on content throughput does not depend on the GPU.
 - Quality uses llama.cpp (`b12470`), greedy decoding and one run per configuration: the quantization
