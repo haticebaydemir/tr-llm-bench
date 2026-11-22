@@ -1,0 +1,17 @@
+# Upstream vLLM 0.18.1 + GPTQ 4-bit (23 Kasim). AWQ upstream'de V100'de yok (en az SM75 istiyor);
+# GPTQ'nun Marlin olmayan kernel'i eski kartlari destekliyor -> --quantization gptq ile zorlanir.
+#   TRBENCH_VLLM=/disk3/trbench/venv-vllm-up/bin/vllm nohup bash scripts/gpu_bench.sh configs/gpu_vllm_upstream_gptq.yaml > /disk3/trbench/logs/gpu_up_gptq.out 2>&1 &
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.20
+enforce_eager: true
+extra_args: [--max-num-batched-tokens, "2048", --quantization, gptq]
+max_model_len: 2048
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [1, 4, 8]
+langs: [tr, en]
+repeats: 3
+results: results/gpu_vllm_upstream.jsonl
+models:
+  - {name: mistral-7b-v0.3, quant: gptq-int4, params_b: 7.2, repo: RedHatAI/Mistral-7B-Instruct-v0.3-GPTQ-4bit, weights_gb_actual: 4.2}
