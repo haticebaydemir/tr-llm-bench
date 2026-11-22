@@ -16,10 +16,14 @@ from trbench.eval.json_tasks import json_items
 from trbench.eval.morphology import morphology_items
 from trbench.eval.schema import Item
 from trbench.eval.sources import (
+    GSM8K_PAIRS,
     belebele_items,
+    choose_gsm8k,
     global_mmlu_items,
     gsm8k_items,
+    load_verified_pairs,
     pick_parallel_ids,
+    save_verified_pairs,
 )
 
 OUT = Path("data/eval/eval_set.jsonl")
@@ -53,7 +57,11 @@ def load_test_parquet(repo: str, must_contain: str = "") -> pd.DataFrame:
 def build_math() -> list[Item]:
     en = load_test_parquet("openai/gsm8k", must_contain="main/")
     tr = load_test_parquet("malhajar/gsm8k_tr-v0.2")
-    items = gsm8k_items(tr, en, N["math"])
+    verified = load_verified_pairs()
+    items = gsm8k_items(tr, en, N["math"], verified)
+    if verified is None:
+        save_verified_pairs(choose_gsm8k(tr, en, N["math"]), tr, en)
+        print(f"GSM8K ciftleri kaydedildi: {GSM8K_PAIRS}")
     print(f"GSM8K eslesme orani: %{items[0].meta['match_rate'] * 100:.1f} "
           f"({len(tr)} satir)")
     return items
@@ -67,7 +75,7 @@ def build_knowledge() -> list[Item]:
 
 def write(items: list[Item], out: Path = OUT) -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
-    with out.open("w", encoding="utf-8") as f:
+    with out.open("w", encoding="utf-8", newline="\n") as f:   # Windows da LF: eval_sha her yerde ayni
         for it in items:
             f.write(json.dumps(it.to_dict(), ensure_ascii=False) + "\n")
 

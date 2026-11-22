@@ -5,8 +5,10 @@ Kural: secim deterministik (sabit seed) -> herkes ayni soruyu alir.
 
 from __future__ import annotations
 
+import json
 import random
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -108,11 +110,44 @@ def pair_gsm8k(tr: pd.DataFrame, en: pd.DataFrame) -> list[tuple[int, int]]:
     return pairs
 
 
-def gsm8k_items(tr: pd.DataFrame, en: pd.DataFrame, n: int) -> list[Item]:
+GSM8K_PAIRS = Path(__file__).with_name("gsm8k_pairs.json")
+
+
+def load_verified_pairs(path: Path = GSM8K_PAIRS) -> list[tuple[int, int]] | None:
+    """Elle denetlenmis (tr_idx, en_idx) ciftleri; dosya yoksa None (ilk kurulum)."""
+    if not path.exists():
+        return None
+    return [(p["tr"], p["en"]) for p in json.loads(path.read_text(encoding="utf-8"))["pairs"]]
+
+
+def save_verified_pairs(chosen: list[tuple[int, int]], tr: pd.DataFrame, en: pd.DataFrame,
+                        path: Path = GSM8K_PAIRS) -> None:
+    doc = {"note": "GSM8K TR/EN ciftleri; trbench.eval.audit_pairs ile denetlendi (sayi kumeleri). "
+                   "Bu dosya varsa build ayni ciftleri kullanir, rastgele secim yapmaz.",
+           "pairs": [{"tr": ti, "en": ei, "answer": final_number(en.iloc[ei]["answer"])}
+                     for ti, ei in chosen]}
+    path.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8", newline="\n")
+
+
+def choose_gsm8k(tr: pd.DataFrame, en: pd.DataFrame, n: int,
+                 verified: list[tuple[int, int]] | None = None) -> list[tuple[int, int]]:
+    """Denetlenmis ciftler verildiyse onlar (hala gecerli mi kontrol edilir), yoksa tohumlu secim."""
     pairs = pair_gsm8k(tr, en)
+    if verified is not None:
+        valid = set(pairs)
+        bad = [p for p in verified if p not in valid]
+        if bad or len(verified) != n:
+            raise ValueError(f"denetlenmis GSM8K ciftleri kaynakla uyusmuyor: {bad[:5]} (n={len(verified)})")
+        return sorted(verified)
     if len(pairs) < n:
         raise ValueError(f"yeterli eslesen soru yok: {len(pairs)} < {n}")
-    chosen = sorted(random.Random(SEED).sample(pairs, n))
+    return sorted(random.Random(SEED).sample(pairs, n))
+
+
+def gsm8k_items(tr: pd.DataFrame, en: pd.DataFrame, n: int,
+                verified: list[tuple[int, int]] | None = None) -> list[Item]:
+    pairs = pair_gsm8k(tr, en)
+    chosen = choose_gsm8k(tr, en, n, verified)
     rate = round(len(pairs) / len(en), 4)
     items = []
     for lang, src in (("tr", "malhajar/gsm8k_tr-v0.2"), ("en", "openai/gsm8k (MIT)")):
@@ -157,6 +192,11 @@ def global_mmlu_items(tr: pd.DataFrame, en: pd.DataFrame, n: int) -> list[Item]:
     def ca(df: pd.DataFrame) -> pd.DataFrame:
         return df[df["cultural_sensitivity_label"] == "CA"]
 
+    for name, df in (("tr", tr), ("en", en)):
+        dup = ca(df)["sample_id"][ca(df)["sample_id"].duplicated()]
+        if len(dup):
+            raise ValueError(f"Global-MMLU {name}: CA sorularinda tekrarlanan sample_id {list(dup[:5])}")
+
     common = sorted(set(ca(tr)["sample_id"]) & set(ca(en)["sample_id"]))
     if len(common) < n:
         raise ValueError(f"yeterli paralel soru yok: {len(common)} < {n}")
@@ -164,7 +204,7 @@ def global_mmlu_items(tr: pd.DataFrame, en: pd.DataFrame, n: int) -> list[Item]:
 
     items = []
     for lang, df in (("tr", tr), ("en", en)):
-        rows = df.drop_duplicates("sample_id").set_index("sample_id").loc[chosen]
+        rows = ca(df).set_index("sample_id").loc[chosen]   # secim de CA filtreli tablodan
         for sid, r in rows.iterrows():
             options = "\n".join(f"{L}) {r[f'option_{L.lower()}']}" for L in LETTERS)
             items.append(Item(

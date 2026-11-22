@@ -17,5 +17,8 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["trbench*"]
 
+[tool.setuptools.package-data]
+trbench = ["eval/gsm8k_pairs.json"]
+
 [tool.ruff]
 line-length = 100

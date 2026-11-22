@@ -123,3 +123,34 @@ def test_math_prompt_requires_reasoning():
     from trbench.eval.sources import MATH_PROMPT
     assert "adım adım çözün" in MATH_PROMPT["tr"] and "yalnızca" not in MATH_PROMPT["tr"]
     assert "step by step first" in MATH_PROMPT["en"] and "only" not in MATH_PROMPT["en"]
+
+
+def test_gsm8k_verified_pairs_used_and_checked(tmp_path):
+    from trbench.eval.sources import choose_gsm8k, load_verified_pairs, save_verified_pairs
+    en = _df(range(6))
+    tr = en.assign(question=[f"s{i}" for i in range(6)])
+    chosen = choose_gsm8k(tr, en, 3)
+    f = tmp_path / "p.json"
+    save_verified_pairs(chosen, tr, en, f)
+    v = load_verified_pairs(f)
+    assert v == chosen and choose_gsm8k(tr, en, 3, v) == chosen
+    assert [i.id for i in gsm8k_items(tr, en, 3, v)] == [i.id for i in gsm8k_items(tr, en, 3)]
+    assert load_verified_pairs(tmp_path / "yok.json") is None
+    with pytest.raises(ValueError, match="uyusmuyor"):
+        choose_gsm8k(tr, en, 3, [(0, 1), (1, 1), (2, 2)])           # cevaplari farkli cift
+
+
+def test_global_mmlu_rejects_duplicate_sample_ids():
+    df = _mmlu("tr", ["CA", "CA", "CA"])
+    df.loc[1, "sample_id"] = "s0"
+    with pytest.raises(ValueError, match="tekrarlanan"):
+        global_mmlu_items(df, _mmlu("en", ["CA", "CA", "CA"]), 1)
+
+
+def test_global_mmlu_selects_from_filtered_table():
+    # Ayni sample_id hem CS hem CA olarak varsa (tekillik bozuksa) CA satiri alinmali
+    tr = _mmlu("tr", ["CS", "CA", "CA"])
+    tr.loc[0, "sample_id"] = "s1"                       # CS kopya once geliyor
+    tr.loc[0, "question"] = "YANLIS"
+    items = global_mmlu_items(tr, _mmlu("en", ["CS", "CA", "CA"]), 2)
+    assert all("YANLIS" not in i.prompt for i in items)
