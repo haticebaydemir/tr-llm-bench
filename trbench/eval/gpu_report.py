@@ -44,8 +44,10 @@ def serving(paths: list[Path]) -> pd.DataFrame:
     rows = pick([r for r in rows if r.get("status") == "ok"],
                 ("engine", "model", "quant"), ("lang", "concurrency", "repeat"))
     df = pd.DataFrame(rows)
+    if "words_per_s" not in df:
+        df["words_per_s"] = float("nan")
     g = df.groupby(["engine", "model", "lang", "concurrency"])
-    out = g.agg(tps=("tokens_per_s", "median"), ttft=("ttft_p50_ms", "median"),
+    out = g.agg(tps=("tokens_per_s", "median"), wps=("words_per_s", "median"), ttft=("ttft_p50_ms", "median"),
                 ttft_max=("ttft_p50_ms", "max"), errors=("errors", "sum"),
                 peak=("gpu2_peak_mib", "max"), idle=("gpu2_idle_mib", "min"), n=("repeat", "count"))
     return out.reset_index()
@@ -65,6 +67,7 @@ def model_table(s: pd.DataFrame, tok: pd.DataFrame, usd_h: float) -> pd.DataFram
     en = top[top["lang"] == "en"].set_index("model")
     t = pd.DataFrame({
         "c1_tr": c1["tps"], "conc": tr["concurrency"], "top_tr": tr["tps"], "top_en": en["tps"],
+        "wps_tr": tr["wps"],
         "ttft_tr": tr["ttft"], "peak_gb": lc.groupby("model")["peak"].max() / 1024,
         "ours_gb": (lc.groupby("model")["peak"].max() - lc.groupby("model")["idle"].min()) / 1024,
     })
@@ -151,12 +154,13 @@ def main() -> None:
     print(f"kosu: {int(s['n'].sum())}, hata: {int(s['errors'].sum())}, "
           f"GPU 2 toplam tepe: {s['peak'].max() / 1024:.1f} GB\n")
     t = model_table(s, tokenizer_stats(), a.usd_per_hour)
-    print("| Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR content tok/s | TTFT p50 TR (ms) "
+    print("| Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR words/s (measured) | TR content tok/s "
+          "| TTFT p50 TR (ms) "
           f"| GPU 2 peak (GB) | $ per 1k TR words @ ${a.usd_per_hour:g}/h |")
-    print("|---|---|---|---|---|---|---|---|---|")
+    print("|---|---|---|---|---|---|---|---|---|---|")
     for m, r in t.iterrows():
         print(f"| {SHOW[m]} | {r.c1_tr:.0f} | {int(r.conc)} | {r.top_tr:.0f} | {r.top_en:.0f} | "
-              f"**{r.content:.0f}** | {r.ttft_tr:.0f} | {r.peak_gb:.1f} | {r.usd_per_1k_words:.4f} |")
+              f"{r.wps_tr:.0f} | **{r.content:.0f}** | {r.ttft_tr:.0f} | {r.peak_gb:.1f} | {r.usd_per_1k_words:.4f} |")
     e = engine_table(s)
     print("\n| Concurrency | Lang | llama.cpp tok/s | vLLM tok/s | vLLM vs llama.cpp | "
           "TTFT p50 llama.cpp / vLLM (ms) |")

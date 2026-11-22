@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -57,10 +58,24 @@ def git_commit() -> tuple[str, bool]:
     return (sha or "unknown"), bool(git("status", "--porcelain", "--untracked-files=no"))
 
 
+def hardware() -> dict:
+    """CPU modeli, RAM ve kernel: CPU olcumlerinin (llama-bench, CPU kalite) yorumu icin."""
+    cpu = platform.processor() or ""
+    ram_gb = None
+    try:
+        txt = Path("/proc/cpuinfo").read_text(encoding="utf-8", errors="replace")
+        cpu = next((ln.split(":", 1)[1].strip() for ln in txt.splitlines() if ln.startswith("model name")), cpu)
+        mem = Path("/proc/meminfo").read_text(encoding="utf-8").split()
+        ram_gb = round(int(mem[mem.index("MemTotal:") + 1]) / 1024**2, 1)
+    except (OSError, ValueError, StopIteration):
+        pass
+    return {"cpu": cpu or None, "cpu_count": os.cpu_count(), "ram_gb": ram_gb, "kernel": platform.release()}
+
+
 def provenance() -> dict:
     sha, dirty = git_commit()
     return {"git_commit": sha, "git_dirty": dirty, "python": sys.version.split()[0],
-            "platform": platform.platform()}
+            "platform": platform.platform(), **hardware()}
 
 
 def experiment_id(parts: dict) -> str:

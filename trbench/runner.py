@@ -19,6 +19,7 @@ import itertools
 import json
 import os
 import platform
+import re
 import subprocess
 import threading
 import time
@@ -88,7 +89,10 @@ def env_meta() -> dict:
     lcpp = subprocess.run([str(LLAMA_CUDA), "--version"], check=False,
                           capture_output=True, text=True)
     lcpp_ver = next((x for x in (lcpp.stdout + lcpp.stderr).splitlines() if "version" in x), "")
-    return {"gpu": smi, "vllm": ver, "llamacpp": lcpp_ver.strip(), "host": platform.node(),
+    full = subprocess.run(["nvidia-smi"], check=False, capture_output=True, text=True).stdout
+    cuda = re.search(r"CUDA Version:\s*(\S+)", full)
+    return {"gpu": smi, "cuda_driver": cuda.group(1) if cuda else None,
+            "vllm": ver, "llamacpp": lcpp_ver.strip(), "host": platform.node(),
             **provenance()}
 
 

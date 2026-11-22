@@ -123,13 +123,13 @@ def tok_tax(csv: Path = TOK) -> dict[str, float]:
     return {m: t[lab] for m, lab in TOK_LABEL.items() if lab in t}
 
 
-def gpu_speed(rows: list[dict]) -> dict[str, float]:
-    """Turkce, olculen en yuksek esanlilikta, tekrarlarin medyani (tok/s)."""
+def gpu_speed(rows: list[dict], field: str = "tokens_per_s") -> dict[str, float]:
+    """Turkce, olculen en yuksek esanlilikta, tekrarlarin medyani (tok/s ya da olculen kelime/s)."""
     import statistics
     by: dict[str, dict[int, list[float]]] = {}
     for r in rows:
-        if r.get("status") == "ok" and r["lang"] == "tr":
-            by.setdefault(r["model"], {}).setdefault(r["concurrency"], []).append(r["tokens_per_s"])
+        if r.get("status") == "ok" and r["lang"] == "tr" and r.get(field) is not None:
+            by.setdefault(r["model"], {}).setdefault(r["concurrency"], []).append(r[field])
     return {m: statistics.median(d[max(d)]) for m, d in by.items()}
 
 
@@ -144,6 +144,7 @@ def gpu_board(q: list[dict], s: list[dict], tax_: dict[str, float]) -> list[dict
         for k in keys:
             acc.setdefault(m, {}).setdefault(k, []).append(int(r["correct"]))
     sp = gpu_speed(s)
+    wp = gpu_speed(s, "words_per_s")
     out = []
     for m, d in acc.items():
         def pct(k, d=d):
@@ -154,7 +155,8 @@ def gpu_board(q: list[dict], s: list[dict], tax_: dict[str, float]) -> list[dict
         ci = round(196 * (p * (1 - p) / len(tr)) ** 0.5, 1) if tr else None
         row = {"model": m, "tr": pct("tr"), "tr_ci": ci, "en": pct("en"), "morph": pct("morph"),
                **{c: pct(f"tr_{c}") for c in CATS}, "tok_tax": tax_.get(m),
-               "gpu_tps": round(sp[m]) if m in sp else None}
+               "gpu_tps": round(sp[m]) if m in sp else None,
+               "gpu_wps": round(wp[m]) if m in wp else None}
         row["tr_content_tps"] = round(sp[m] / tax_[m]) if m in sp and m in tax_ else None
         out.append(row)
     return sorted(out, key=lambda r: -(r["tr"] or 0))
@@ -182,10 +184,12 @@ Click a column to sort. <a href="https://github.com/haticebaydemir/tr-llm-bench"
 <h2>Models (Q4_K_M, GPU)</h2>
 <p>14 models, llama.cpp on one V100. ± is the 95% interval of Turkish accuracy (about ±5 points):
 neighbouring rows are usually not distinguishable. Category columns are Turkish accuracy.
-<b>TR content tok/s</b> = GPU tok/s at 8 concurrent requests ÷ tokenizer tax (Gemma-2: 2 requests; speed measured for 7 models).</p>
+Three speeds, all Turkish, at 8 concurrent requests (Gemma-2: 2; speed measured for 7 models):
+<b>GPU tok/s</b> = raw tokens per second; <b>TR words/s</b> = words actually generated per second;
+<b>TR content tok/s</b> = GPU tok/s ÷ tokenizer tax, i.e. how many English-equivalent tokens of content per second.</p>
 <div class="wrap"><table class="s"><thead><tr><th>Model</th><th>TR %</th><th>EN %</th><th>TR−EN</th>
 <th>Morph.</th><th>Reading</th><th>Math</th><th>Knowl.</th><th>Instr.</th><th>JSON</th>
-<th>Tok. tax</th><th>GPU tok/s</th><th>TR content tok/s</th></tr></thead><tbody>
+<th>Tok. tax</th><th>GPU tok/s</th><th>TR words/s</th><th>TR content tok/s</th></tr></thead><tbody>
 {gpu_rows}
 </tbody></table></div>
 
@@ -240,7 +244,8 @@ def write_space(b: list[dict], date: str, g: list[dict] | None = None) -> None:
         grs.append("<tr><td>" + html.escape(r["model"]) + "</td>" + trc
                    + cell(r["en"]) + cell(gap, "{:+.1f}") + cell(r["morph"])
                    + "".join(cell(r[c], "{:.0f}") for c in CATS)
-                   + cell(r["tok_tax"], "{:.2f}×") + cell(r["gpu_tps"], "{:.0f}") + cell(r["tr_content_tps"], "{:.0f}")
+                   + cell(r["tok_tax"], "{:.2f}×") + cell(r["gpu_tps"], "{:.0f}") + cell(r.get("gpu_wps"), "{:.0f}")
+                   + cell(r["tr_content_tps"], "{:.0f}")
                    + "</tr>")
     SPACE.mkdir(exist_ok=True)
     (SPACE / "index.html").write_text(PAGE.format(rows="\n".join(trs), gpu_rows="\n".join(grs), date=date),

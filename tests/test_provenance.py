@@ -16,7 +16,7 @@ def test_file_sha256_cached_and_invalidated(tmp_path):
 
 def test_provenance_fields():
     p = provenance()
-    assert {"git_commit", "git_dirty", "python", "platform"} <= p.keys()
+    assert {"git_commit", "git_dirty", "python", "platform", "cpu", "ram_gb", "kernel"} <= p.keys()
 
 
 def test_file_sha256_same_size_same_second_change(tmp_path):
