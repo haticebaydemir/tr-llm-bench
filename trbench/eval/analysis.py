@@ -37,8 +37,9 @@ TRANSLATION_ERRORS = frozenset({
 
 
 def load(path: Path = RESULTS) -> list[dict]:
+    from trbench.results import pick
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines()]
-    return [r for r in rows if r.get("error") is None]
+    return pick([r for r in rows if r.get("error") is None], ("label",), ("id", "lang"))
 
 
 def table(rows: list[dict], model: str) -> dict[str, dict[tuple[str, str], bool]]:

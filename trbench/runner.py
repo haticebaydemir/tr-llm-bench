@@ -30,7 +30,7 @@ import httpx
 from trbench.config import ModelSpec, Phase3, load
 from trbench.load.generator import run as load_run
 from trbench.load.generator import summarize
-from trbench.provenance import file_sha256, provenance, sha256_text
+from trbench.provenance import experiment_id, file_sha256, provenance, sha256_text
 
 ROOT = Path("/disk3/trbench")
 MODELS_DIR = ROOT / "models"
@@ -39,7 +39,8 @@ LOGS = ROOT / "logs"
 VLLM = Path(os.environ.get("TRBENCH_VLLM", str(ROOT / "venv-vllm/bin/vllm")))
 LLAMA_CUDA = ROOT / "llama.cpp/build-cuda/bin/llama-server"
 EVAL = Path("data/eval/eval_set.jsonl")
-KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat", "fp")
+# exp: tam deney kimligi (ayar ozeti fp + eval seti + agirlik + engine surumu + kod surumu)
+KEY_FIELDS = ("engine", "model", "quant", "lang", "concurrency", "repeat", "fp", "exp")
 
 
 # ---------- Saf yardimcilar (testli) ----------
@@ -202,13 +203,9 @@ def main() -> None:
     LOGS.mkdir(parents=True, exist_ok=True)
 
     for m in cfg.models:
-        todo = [r for r in cfg.runs() if (r["model"], r["quant"]) == (m.name, m.quant)
-                and run_key(r) not in done]
-        if not todo:
-            print(f"[runner] {m.name}/{m.quant}: hepsi bitmis, atla", flush=True)
-            continue
         base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
                 "enforce_eager": cfg.enforce_eager, **meta}
+        # Kimlik agirliga bagli: kontrol model indirildikten (ya da yerelde bulunduktan) SONRA.
         try:
             path, rev = download(m, cfg.engine)
         except Exception as e:  # noqa: BLE001 -- gated, silinmis repo: kaydet, devam
@@ -219,6 +216,15 @@ def main() -> None:
 
         if cfg.engine == "llamacpp":
             base["weights_file"], base["weights_sha256"] = path.name, file_sha256(path)
+        base["exp"] = experiment_id({
+            "fp": cfg.fingerprint(m), "eval_sha": meta["eval_sha"], "revision": rev,
+            "weights": base.get("weights_sha256"), "git_commit": meta["git_commit"],
+            "engine_version": meta["vllm"] if cfg.engine == "vllm" else meta["llamacpp"]})
+        todo = [r for r in cfg.runs() if (r["model"], r["quant"]) == (m.name, m.quant)
+                and run_key({**r, "exp": base["exp"]}) not in done]
+        if not todo:
+            print(f"[runner] {m.name}/{m.quant}: hepsi bitmis (exp {base['exp']}), atla", flush=True)
+            continue
         idle = gpu2_used_mib()
         proc = (start_llamacpp if cfg.engine == "llamacpp" else start_vllm)(cfg, m, path)
         if not wait_healthy(proc, cfg.port):

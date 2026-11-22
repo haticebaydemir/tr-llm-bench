@@ -14,6 +14,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from trbench.eval.analysis import TRANSLATION_ERRORS
+from trbench.results import pick
 
 GPU = Path("results/gpu_quality.jsonl")
 CPU = Path("results/phase4.jsonl")
@@ -23,7 +24,7 @@ def load(path: Path) -> list[dict]:
     if not path.exists():
         return []
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    return [r for r in rows if r.get("correct") is not None]
+    return pick([r for r in rows if r.get("correct") is not None], ("label",), ("id", "lang"))
 
 
 def table(rows: list[dict]) -> dict[str, dict]:

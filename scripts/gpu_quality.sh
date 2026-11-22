@@ -46,6 +46,7 @@ while read -r REPO NAME TPL MORE <&3; do
   fi
   echo "[gq] $NAME GPU2: $(nvidia-smi -i 2 --query-gpu=memory.used --format=csv,noheader) | $(grep -m1 -o 'KV.*size *= *[0-9.]* MiB.*' "$L/gq_${NAME}.log")"
   $PY -m trbench.eval.run --url http://127.0.0.1:$PORT --label "$NAME/q4_k_m" --parallel 4 --out "$OUT" \
+      --weights "$GGUF" --extra "$EXTRA" \
       | tail -12
   kill $SPID 2>/dev/null; wait $SPID 2>/dev/null; SPID=""
   sleep 5

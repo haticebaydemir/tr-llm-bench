@@ -3,11 +3,13 @@
 Amac: bir sonuc satirindan, onu ureten ortami birebir geri kurabilmek.
   git_commit  : kodun surumu (+ kaydedilmemis degisiklik varsa dirty=True)
   *_sha256    : veri seti ve agirlik dosyasinin icerik ozeti (ayni isim, farkli dosya olmasin)
+  exp         : deney kimligi; sonucu degistirebilecek her seyin ozeti (resume ve raporlar bunu kullanir)
 """
 
 from __future__ import annotations
 
 import hashlib
+import json
 import platform
 import subprocess
 import sys
@@ -26,7 +28,8 @@ def file_sha256(path: Path) -> str | None:
     if not path.is_file():
         return None
     st = path.stat()
-    stamp = f"{st.st_size}:{int(st.st_mtime)}"
+    # boyut + nanosaniye mtime + inode: ayni saniyede ayni boyutla degisen dosya da yakalanir
+    stamp = f"{st.st_size}:{st.st_mtime_ns}:{st.st_ino}"
     cache = path.with_name(path.name + ".sha256")
     try:
         old_stamp, old = cache.read_text().split()
@@ -58,3 +61,9 @@ def provenance() -> dict:
     sha, dirty = git_commit()
     return {"git_commit": sha, "git_dirty": dirty, "python": sys.version.split()[0],
             "platform": platform.platform()}
+
+
+def experiment_id(parts: dict) -> str:
+    """Deney kimligi: verilen parcalarin (ayar ozeti, eval seti, agirlik, engine surumu, kod surumu)
+    kararli ozeti. Herhangi biri degisirse eski sonuclar 'bitmis' sayilmaz."""
+    return hashlib.sha256(json.dumps(parts, sort_keys=True, default=str).encode()).hexdigest()[:12]

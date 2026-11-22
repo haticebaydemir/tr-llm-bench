@@ -48,3 +48,15 @@ def test_errors_are_retried_and_not_scored(tmp_path):
     assert rows[0]["error"] and rows[0]["correct"] is None
     assert accuracy(rows) == {}
     assert done_ids(out, "m/q4") == set()                     # hata -> yeniden denenecek
+
+
+def test_resume_depends_on_experiment_id(tmp_path):
+    """Eval seti / agirlik / kod degisince (yeni exp) eski cevaplar yeniden kullanilmaz."""
+    out = tmp_path / "p4.jsonl"
+    client = httpx.AsyncClient(transport=httpx.MockTransport(server))
+    assert asyncio.run(run(items(), "http://x", "m/q4", 2, out, client=client, meta={"exp": "a"})) == 3
+    client = httpx.AsyncClient(transport=httpx.MockTransport(server))
+    assert asyncio.run(run(items(), "http://x", "m/q4", 2, out, client=client, meta={"exp": "a"})) == 0
+    client = httpx.AsyncClient(transport=httpx.MockTransport(server))
+    assert asyncio.run(run(items(), "http://x", "m/q4", 2, out, client=client, meta={"exp": "b"})) == 3
+    assert len(done_ids(out, "m/q4", "a")) == 3 and len(done_ids(out, "m/q4", "b")) == 3

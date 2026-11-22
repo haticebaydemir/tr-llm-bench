@@ -12,7 +12,7 @@ def test_done_keys_only_counts_successful(tmp_path):
          "status": "engine_failed"},
     ]
     p.write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
-    assert done_keys(p) == {("vllm", "q", "fp16", "tr", 1, 0, None)}   # eski satirlar: vllm; basarisiz tekrar denenir
+    assert done_keys(p) == {("vllm", "q", "fp16", "tr", 1, 0, None, None)}   # eski satirlar: vllm; basarisiz tekrar denenir
     assert done_keys(tmp_path / "yok.jsonl") == set()
 
 
@@ -24,7 +24,8 @@ def test_prompts_cycle_and_filter_by_lang():
 
 def test_run_key_and_served_name():
     assert run_key({"engine": "llamacpp", "model": "m", "quant": "fp16", "lang": "en",
-                    "concurrency": 4, "repeat": 2, "fp": "abc", "extra": 1}) == ("llamacpp", "m", "fp16", "en", 4, 2, "abc")
+                    "concurrency": 4, "repeat": 2, "fp": "abc", "exp": "e1", "extra": 1}) == (
+        "llamacpp", "m", "fp16", "en", 4, 2, "abc", "e1")
     m = ModelSpec(name="qwen2.5-7b", quant="awq-int4", params_b=7.6, repo="x")
     assert served_name(m) == "trbench-qwen2.5-7b-awq-int4"
 
@@ -64,3 +65,13 @@ def test_fingerprint_changes_with_result_affecting_settings():
     assert all(r["fp"] == fp for r in cfg.runs() if r["model"] == m.name)
     assert cfg.model_copy(update={"max_tokens": 128}).fingerprint(m) != fp
     assert cfg.model_copy(update={"concurrency": [1]}).fingerprint(m) == fp   # kosu ekseni, ayar degil
+
+
+def test_done_keys_depend_on_experiment_id(tmp_path):
+    """Ayni kosu baska bir deney kimligiyle (eval seti, agirlik, kod...) olculduyse 'bitmemis' sayilir."""
+    p = tmp_path / "r.jsonl"
+    row = {"engine": "llamacpp", "model": "m", "quant": "q4_k_m", "lang": "tr", "concurrency": 1,
+           "repeat": 0, "fp": "f", "exp": "eski", "status": "ok"}
+    p.write_text(json.dumps(row), encoding="utf-8")
+    assert run_key({**row, "exp": "eski"}) in done_keys(p)
+    assert run_key({**row, "exp": "yeni"}) not in done_keys(p)

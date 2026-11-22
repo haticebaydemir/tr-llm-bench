@@ -256,7 +256,11 @@ def main() -> None:
     plot_tax(tr)
     sp = speeds(SPEED.read_text(encoding="utf-8").splitlines()) if SPEED.exists() else {}
     b = board(rows, sp)
-    g = gpu_board(_jsonl(GPU_Q), _jsonl(GPU_S), tok_tax())
+    from trbench.eval.gpu_quality_report import load as load_q
+    from trbench.results import pick
+    s_rows = pick([r for r in _jsonl(GPU_S) if r.get("status") == "ok"],
+                  ("engine", "model", "quant"), ("lang", "concurrency", "repeat"))
+    g = gpu_board(load_q(GPU_Q), s_rows, tok_tax())
     write_space(b, datetime.datetime.now(datetime.timezone.utc).date().isoformat(), g)
     print(f"kaydedildi: {PNG}, {SPACE}/index.html (GPU {len(g)} model, CPU {len(b)} satir)")
 

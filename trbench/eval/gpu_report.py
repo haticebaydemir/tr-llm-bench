@@ -36,8 +36,14 @@ def tokenizer_stats(csv: Path = R / "tokenizer_tax.csv") -> pd.DataFrame:
 
 def serving(paths: list[Path]) -> pd.DataFrame:
     """Tekrarlarin medyani: engine, model, lang, concurrency -> tok/s, ttft, tepe bellek."""
-    df = pd.concat([pd.read_json(p, lines=True) for p in paths if p.exists()], ignore_index=True)
-    df = df[df["status"] == "ok"]
+    import json
+
+    from trbench.results import pick
+    rows = [json.loads(x) for p in paths if p.exists()
+            for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+    rows = pick([r for r in rows if r.get("status") == "ok"],
+                ("engine", "model", "quant"), ("lang", "concurrency", "repeat"))
+    df = pd.DataFrame(rows)
     g = df.groupby(["engine", "model", "lang", "concurrency"])
     out = g.agg(tps=("tokens_per_s", "median"), ttft=("ttft_p50_ms", "median"),
                 ttft_max=("ttft_p50_ms", "max"), errors=("errors", "sum"),

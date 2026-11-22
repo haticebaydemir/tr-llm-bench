@@ -65,7 +65,8 @@ for Q in $QUANTS; do
   kill -0 $SPID   # cevap veren sunucu BIZIM baslattigimiz mi?
   curl -s 127.0.0.1:$PORT/props | grep -qi "$Q" \
     || { echo "[phase4] HATA: sunucudaki model $Q degil" >&2; exit 1; }
-  $LOW $PY -m trbench.eval.run --url http://127.0.0.1:$PORT --label "$NAME/$Q" --parallel 4 &
+  $LOW $PY -m trbench.eval.run --url http://127.0.0.1:$PORT --label "$NAME/$Q" --parallel 4 \
+       --weights "$GGUF" --extra "${LLAMA_EXTRA:-}" &
   wait $!
   kill $SPID; wait $SPID 2>/dev/null || true
 done

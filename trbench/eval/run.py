@@ -21,7 +21,7 @@ import httpx
 from trbench.eval.build import OUT as EVAL
 from trbench.eval.schema import Item
 from trbench.eval.scorers import score
-from trbench.provenance import file_sha256, provenance
+from trbench.provenance import experiment_id, file_sha256, provenance
 
 OUT = Path("results/phase4.jsonl")
 # Kategoriye gore cikti siniri: TR ayni icerik icin ~1.6x token harciyor (Faz 1),
@@ -35,13 +35,15 @@ def load_items(path: Path = EVAL) -> list[Item]:
     return [Item(**json.loads(x)) for x in path.read_text(encoding="utf-8").splitlines()]
 
 
-def done_ids(path: Path, label: str) -> set[tuple[str, str]]:
+def done_ids(path: Path, label: str, exp: str | None = None) -> set[tuple[str, str]]:
+    """Basariyla cevaplanmis sorular. exp verilirse yalnizca AYNI deney kimligiyle olculenler:
+    eval seti, agirlik, sunucu surumu, ayar ya da kod degistiyse soru yeniden sorulur."""
     if not path.exists():
         return set()
     out = set()
     for line in path.read_text(encoding="utf-8").splitlines():
         r = json.loads(line)
-        if r["label"] == label and r.get("error") is None:
+        if r["label"] == label and r.get("error") is None and (exp is None or r.get("exp") == exp):
             out.add((r["id"], r["lang"]))
     return out
 
@@ -59,7 +61,7 @@ async def ask(client: httpx.AsyncClient, url: str, item: Item) -> tuple[str | No
 
 async def run(items: list[Item], url: str, label: str, parallel: int, out: Path,
               client: httpx.AsyncClient | None = None, meta: dict | None = None) -> int:
-    done = done_ids(out, label)
+    done = done_ids(out, label, (meta or {}).get("exp"))
     todo = [i for i in items if (i.id, i.lang) not in done]
     own = client is None
     client = client or httpx.AsyncClient(timeout=httpx.Timeout(1800.0))
@@ -113,12 +115,21 @@ def main() -> None:
     ap.add_argument("--parallel", type=int, default=4)
     ap.add_argument("--limit", type=int, default=0, help="test icin: ilk N soru")
     ap.add_argument("--out", type=Path, default=OUT, help="sonuc dosyasi (GPU olcumleri ayri tutulur)")
+    ap.add_argument("--weights", type=Path, help="agirlik dosyasi (GGUF): SHA-256'si deney kimligine girer")
+    ap.add_argument("--extra", default="", help="sunucuya verilen ek ayarlar (orn. KV cache tipi); kimlige girer")
     a = ap.parse_args()
     items = load_items()
     if a.limit:
         items = items[: a.limit]
     t0 = time.time()
     meta = {**provenance(), "eval_sha": file_sha256(EVAL), **server_meta(a.url)}
+    if a.weights:
+        meta["weights_sha256"] = file_sha256(a.weights)
+    meta["exp"] = experiment_id({
+        "label": a.label, "eval_sha": meta["eval_sha"], "git_commit": meta["git_commit"],
+        "server_build": meta.get("server_build"),
+        "weights": meta.get("weights_sha256") or meta.get("weights_file"),
+        "extra": a.extra, "max_tokens": MAX_TOKENS})
     n = asyncio.run(run(items, a.url, a.label, a.parallel, a.out, meta=meta))
     rows = [json.loads(x) for x in a.out.read_text(encoding="utf-8").splitlines()]
     print(f"{n} soru soruldu, {time.time() - t0:.0f} sn")
