@@ -184,12 +184,12 @@ Click a column to sort. <a href="https://github.com/haticebaydemir/tr-llm-bench"
 <h2>Models (Q4_K_M, GPU)</h2>
 <p>14 models, llama.cpp on one V100. ± is the 95% interval of Turkish accuracy (about ±5 points):
 neighbouring rows are usually not distinguishable. Category columns are Turkish accuracy.
-Three speeds, all Turkish, at 8 concurrent requests (Gemma-2: 2; speed measured for 7 models):
-<b>GPU tok/s</b> = raw tokens per second; <b>TR words/s</b> = words actually generated per second;
-<b>TR content tok/s</b> = GPU tok/s ÷ tokenizer tax, i.e. how many English-equivalent tokens of content per second.</p>
+Speeds are Turkish, at 8 concurrent requests (Gemma-2: 2; speed measured for 7 models):
+<b>GPU tok/s</b> = raw tokens per second; <b>TR content tok/s</b> = GPU tok/s ÷ tokenizer tax,
+i.e. English-equivalent tokens of content per second.</p>
 <div class="wrap"><table class="s"><thead><tr><th>Model</th><th>TR %</th><th>EN %</th><th>TR−EN</th>
 <th>Morph.</th><th>Reading</th><th>Math</th><th>Knowl.</th><th>Instr.</th><th>JSON</th>
-<th>Tok. tax</th><th>GPU tok/s</th><th>TR words/s</th><th>TR content tok/s</th></tr></thead><tbody>
+<th>Tok. tax</th><th>GPU tok/s</th><th>TR content tok/s</th></tr></thead><tbody>
 {gpu_rows}
 </tbody></table></div>
 
@@ -244,8 +244,7 @@ def write_space(b: list[dict], date: str, g: list[dict] | None = None) -> None:
         grs.append("<tr><td>" + html.escape(r["model"]) + "</td>" + trc
                    + cell(r["en"]) + cell(gap, "{:+.1f}") + cell(r["morph"])
                    + "".join(cell(r[c], "{:.0f}") for c in CATS)
-                   + cell(r["tok_tax"], "{:.2f}×") + cell(r["gpu_tps"], "{:.0f}") + cell(r.get("gpu_wps"), "{:.0f}")
-                   + cell(r["tr_content_tps"], "{:.0f}")
+                   + cell(r["tok_tax"], "{:.2f}×") + cell(r["gpu_tps"], "{:.0f}") + cell(r["tr_content_tps"], "{:.0f}")
                    + "</tr>")
     SPACE.mkdir(exist_ok=True)
     (SPACE / "index.html").write_text(PAGE.format(rows="\n".join(trs), gpu_rows="\n".join(grs), date=date),

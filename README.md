@@ -66,18 +66,30 @@ memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB
 
 ### 2a. Seven models, llama.cpp, Q4_K_M
 
-Median of 3 repeats. Cost assumes **$1 per GPU-hour** (scale linearly to your price) at full load;
-Turkish words per second = tokens ÷ Turkish tokens per word on FLORES+.
+Median of 3 repeats. Three speeds, all for Turkish output:
 
-| Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR content tok/s | TTFT p50 TR (ms) | GPU 2 peak (GB) | $ per 1k TR words @ $1/h |
-|---|---|---|---|---|---|---|---|---|
-| Trendyol-7B | 35 | 8 | 130 | 123 | **119** | 427 | 10.3 | 0.0040 |
-| Aya-Expanse-8B | 32 | 8 | 109 | 115 | **90** | 571 | 11.6 | 0.0047 |
-| Cosmos-TR-Llama-8B | 34 | 8 | 122 | 126 | **87** | 493 | 11.3 | 0.0049 |
-| Llama-3.1-8B | 34 | 8 | 121 | 123 | **87** | 636 | 12.4 | 0.0049 |
-| Qwen2.5-7B | 34 | 8 | 130 | 130 | **81** | 249 | 9.9 | 0.0054 |
-| Mistral-7B-v0.3 | 35 | 8 | 127 | 128 | **57** | 683 | 11.0 | 0.0082 |
-| Gemma-2-9B | 25 | 2 | 43 | 42 | **31** | 531 | 12.9 | 0.0139 |
+- **TR tok/s**: raw tokens per second, as the engine reports them.
+- **TR words/s (measured)**: words actually generated per second; see note ² before using it.
+- **TR content tok/s** = TR tok/s ÷ tokenizer tax: how many English-equivalent tokens of content per second.
+  This is the number used for comparisons below.
+
+Cost assumes **$1 per GPU-hour** (scale linearly to your price) at full load, with Turkish words per second
+= tokens ÷ Turkish tokens per word on FLORES+.
+
+| Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR words/s (measured) ² | TR content tok/s | TTFT p50 TR (ms) | GPU 2 peak (GB) | $ per 1k TR words @ $1/h |
+|---|---|---|---|---|---|---|---|---|---|
+| Trendyol-7B | 35 | 8 | 130 | 123 | 59 | **119** | 427 | 10.3 | 0.0040 |
+| Aya-Expanse-8B | 32 | 8 | 109 | 115 | 50 | **90** | 571 | 11.6 | 0.0047 |
+| Cosmos-TR-Llama-8B | 34 | 8 | 122 | 126 | 54 | **87** | 493 | 11.3 | 0.0049 |
+| Llama-3.1-8B | 34 | 8 | 121 | 123 | 51 | **87** | 636 | 12.4 | 0.0049 |
+| Qwen2.5-7B | 34 | 8 | 130 | 130 | 47 | **81** | 249 | 9.9 | 0.0054 |
+| Mistral-7B-v0.3 | 35 | 8 | 127 | 128 | 38 | **57** | 683 | 11.0 | 0.0082 |
+| Gemma-2-9B | 25 | 2 | 43 | 42 | 4 | **31** | 531 | 12.9 | 0.0139 |
+
+² *Measured words/s is not a content measure in this setup.* Every request is forced to 256 output tokens
+(`min_tokens` + `ignore_eos`), so generation continues after the model's natural answer ends, and what it
+produces there is often not words. Gemma-2-9B shows this most strongly (4 words/s from 43 tok/s). The load
+test does not store the generated text, so the cause is not verified yet; the planned rerun will keep a sample.
 
 ![Turkish content per second on GPU](docs/gpu_content.png)
 
@@ -322,6 +334,35 @@ model.** The knowledge and math gaps are mostly real. Several other items contai
 errors that do not change the answer (e.g. "24 hours" → "24 seconds",
 "discount rate" → "indirim oranı" instead of "reeskont oranı").
 
+### Public vs original items
+
+Belebele, Global-MMLU and GSM8K are public and may be in training data; the instruction and JSON items were
+generated in this repository and are published nowhere else. TR−EN accuracy gap in points on the GPU run
+(Q4_K_M), with 95% paired-bootstrap intervals (`python -m trbench.eval.breakdown`, which also gives per-category intervals):
+
+| Model | Public: TR − EN | Original: TR − EN |
+|---|---|---|
+| Gemma-2-9B | −6 [−12, −1] | +9 [+4, +15] |
+| Qwen3-8B | −14 [−22, −5] | −7 [−13, −3] |
+| Qwen2.5-7B | −17 [−26, −10] | +0 [−5, +5] |
+| Qwen3-4B | −13 [−20, −5] | −15 [−22, −9] |
+| Aya-Expanse-8B | −11 [−20, −3] | −9 [−15, −3] |
+| Llama-3.1-8B | −17 [−26, −8] | −4 [−13, +5] |
+| Gemma-3-4B | −19 [−28, −10] | −1 [−3, +0] |
+| Cosmos-TR-Llama-8B | −16 [−26, −6] | −7 [−14, −2] |
+| Phi-4-mini | −20 [−29, −11] | −17 [−25, −10] |
+| Trendyol-7B | +2 [−6, +10] | +10 [+5, +17] |
+| Llama-3.2-3B | −17 [−26, −8] | −38 [−51, −25] |
+| Ministral-8B | −31 [−42, −20] | −37 [−47, −27] |
+| Granite-3.3-8B | −43 [−52, −34] | −30 [−39, −22] |
+| Mistral-7B-v0.3 | −33 [−43, −23] | −11 [−18, −4] |
+
+- **The Turkish gap is not only a benchmark artefact:** 9 of 14 models also trail in Turkish on items no model
+  can have seen, by up to 38 points.
+- **For most models the gap is larger on public benchmarks** (e.g. Qwen2.5-7B −17 vs 0, Gemma-3-4B −19 vs −1),
+  consistent with the translation errors above; contamination may add to it, but these data cannot separate the two.
+- Gemma-2-9B and Trendyol-7B do better in Turkish than English on the original items, driven by instruction following.
+
 ## 4. Quality vs. speed on CPU
 
 `llama-bench` (llama.cpp `b12470`, 16 cores, 128 generated tokens, 3 repeats) on every GGUF,
@@ -374,9 +415,10 @@ tax is paid again in long contexts.
 
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
 tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (57 to 119
-content tok/s on the same GPU, a 2× cost difference per Turkish word) and, under load, how long
-users wait for the first token; quantization down to Q4_K_M costs Turkish no more than English in any of
-seven models; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
+content tok/s on the same GPU, a 2× cost difference per Turkish word) and, in our 8 GB-budget vLLM
+runs with Mistral-7B, how long users wait for the first token at 8 concurrent requests (2.2–2.5 s in Turkish
+vs 0.25–0.3 s in English, with both vLLM builds); quantization down to Q4_K_M costs Turkish no more than English in any of
+seven models, and neither does a q8_0 or q4_0 KV cache; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
 model size (4B Gemma-3 and Qwen3 beat several 8B models); and the remaining quality gap lies in the base model (small for Gemma-2-9B,
 large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
 
@@ -385,17 +427,34 @@ meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.
 
 ## Limitations
 
-- GPU serving ran within ~8 GB of one shared V100: 4-bit models up to 9B, at most 8 concurrent
-  requests (Gemma: 2). fp16/Q8 on GPU, models above 9B and high concurrency did not fit the budget.
-  The engine comparison covers only Mistral-7B (the only 4-bit vLLM model that fit), with vLLM in eager mode;
-  upstream vLLM runs on the V100 only up to 0.18.x and without AWQ.
-- One GPU generation (V100, SM70): newer GPUs change absolute speeds and possibly the engine ranking;
-  the tokenizer effect on content throughput does not depend on the GPU.
-- Quality uses llama.cpp (`b12470`), greedy decoding and one run per configuration: the quantization
-  comparison on CPU, the fourteen-model table on GPU. GGUF files are built from the original weights
-  with that same release (Qwen and the newer models: published GGUF files).
-- 250 paired items give 95% intervals of about ±4 points; a smaller quantization tax cannot be excluded.
-- Reading, knowledge and math use translated benchmarks; see the errata above.
+**What was measured.** 4–9B open models; quality on 550 items (242 TR/EN pairs after removing 8 translation
+errors, plus 50 Turkish-only morphology items), greedy decoding, one run per configuration, llama.cpp `b12470`.
+Serving on one shared V100 (SM70) within ~8 GB: 4-bit models, at most 8 concurrent requests (Gemma-2-9B: 2),
+closed-loop load (a new request starts when one finishes), fixed 256-token outputs.
+
+**Observed (holds within that setup):**
+- Tokenizer tax across 13 tokenizers, and that it sets Turkish content per second on the same engine and GPU.
+- No measurable Turkish-specific loss from Q8_0 / Q4_K_M weights (7 models) or from a q8_0 / q4_0 KV cache
+  (5 models). 242 pairs give intervals of roughly ±4–6 points: a smaller effect cannot be excluded.
+- Turkish trails English on most models both on translated public benchmarks and on the original items
+  written for this project (see *Public vs original items*), so the gap is not only contamination or translation.
+- At 8 concurrent requests on an 8 GB budget, vLLM's Turkish time to first token rises to 2.2–2.5 s for Mistral-7B.
+
+**Interpreted (likely, not proven here):**
+- The Turkish TTFT rise is queueing for KV-cache space, because Mistral needs 2.2× more tokens for Turkish.
+  The queue was not measured directly.
+- Part of the larger gap on public benchmarks comes from translation quality (8 confirmed errors) and possibly
+  from contamination; this cannot be separated from item difficulty with the current data.
+
+**Not generalizable from these data:**
+- Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB; an unconstrained or newer GPU
+  may not show the queueing at all.
+- Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
+- Per-category differences: with 40–60 items per category the intervals are wide (up to ±18 points for knowledge).
+
+Other limits: the engine comparison covers only Mistral-7B (the only 4-bit vLLM model that fit), with vLLM in
+eager mode; upstream vLLM runs on the V100 only up to 0.18.x and without AWQ. GGUF files are built from the
+original weights with llama.cpp `b12470` (Qwen and the newer models: published GGUF files).
 
 Eval set: [HaticeB/tr-llm-bench-eval](https://huggingface.co/datasets/HaticeB/tr-llm-bench-eval)
 (original items, IDs of third-party items, translation errata).
@@ -415,8 +474,14 @@ python -m trbench.eval.gpu_report
 
 Every result row records where it came from: `git_commit` (and `git_dirty`), the SHA-256 of
 the eval set and of the GGUF file, the engine build, and `fp`, a hash of every setting that
-changes the result (max tokens, context, template, engine flags). A rerun skips only rows with
-the same `fp`, so changing a setting never silently reuses an old measurement.
+changes the result (max tokens, context, template, engine flags), and `exp`, an experiment ID built from
+`fp`, the eval-set SHA, the weights SHA or model revision, the engine version and the git commit. A rerun
+skips only rows with the same `exp`, and the reports use the latest experiment per model, so changing a
+setting, the data or the code never silently reuses an old measurement.
+
+The measurement environment is pinned in `env/`: `SYSTEM.md` (OS, CPU, RAM, GPU, driver, CUDA, llama.cpp
+commit) and `pip freeze` lock files for the measurement venv and for upstream vLLM
+(`bash scripts/env_snapshot.sh` regenerates them).
 `python -m trbench.eval.audit_pairs` checks that each GSM8K TR/EN pair contains the same numbers:
 36 of 40 match exactly; the other 4 were read by hand and are correct pairs written differently
 (13:00 vs 1 PM, %25 vs 0.25, $1.00 vs 1, "ikişer" vs "2").
