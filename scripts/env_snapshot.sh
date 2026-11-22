@@ -14,7 +14,8 @@ R=/disk3/trbench; mkdir -p env
   echo "- RAM: $(awk '/MemTotal/ {printf "%.0f GB", $2/1024/1024}' /proc/meminfo)"
   echo "- GPU: $(nvidia-smi -i 2 --query-gpu=name,driver_version --format=csv,noheader)"
   echo "- CUDA (surucu): $(nvidia-smi | grep -o 'CUDA Version: [0-9.]*' | cut -d' ' -f3)"
-  echo "- CUDA toolkit (llama.cpp derlemesi): $( (command -v nvcc || echo /usr/local/cuda/bin/nvcc) | xargs -I{} {} --version | tail -1)"
+  NVCC=$(command -v nvcc || echo /usr/local/cuda/bin/nvcc)
+  echo "- CUDA toolkit (llama.cpp derlemesi): $("$NVCC" --version 2>/dev/null | tail -1 || echo bulunamadi)"
   echo "- llama.cpp: tag b12470, commit $(git -C "$R/llama.cpp" rev-parse --short HEAD), CUDA build SM70"
   echo "- Python (olcum venv): $("$R/venv/bin/python" -V 2>&1)"
   [ -x "$R/venv-vllm-up/bin/python" ] && echo "- vLLM upstream: $("$R/venv-vllm-up/bin/python" -c 'import vllm,torch;print(vllm.__version__, "torch", torch.__version__, "cuda", torch.version.cuda)')"
