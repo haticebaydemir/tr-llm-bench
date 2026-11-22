@@ -68,6 +68,28 @@ def prompts_for(items: list[dict], lang: str, n: int) -> list[str]:
     return list(itertools.islice(itertools.cycle(pool), n))
 
 
+def token_windows(tokens: list[int], size: int, n: int) -> list[list[int]]:
+    """Uzun bir token dizisinden ardisik, ortusmeyen `size` uzunlugunda n pencere (yetmezse basa sarar)."""
+    if len(tokens) < size:
+        raise ValueError(f"{size} token'lik pencere icin metin cok kisa ({len(tokens)})")
+    k = len(tokens) // size
+    return [tokens[(i % k) * size:(i % k + 1) * size] for i in range(n)]
+
+
+def matched_prompts(url: str, model: str, items: list[dict], lang: str, size: int, n: int) -> list[str]:
+    """TR ve EN icin AYNI token sayisinda prompt: o dilin prompt'lari birlestirilir, engine'in kendi
+    tokenizer'iyla (/tokenize) size'lik pencerelere bolunur, /detokenize ile metne doner.
+    vLLM ve llama.cpp ayni endpoint adlarini farkli alanlarla kullanir; ikisi de desteklenir."""
+    text = "\n\n".join(i["prompt"] for i in items if i["lang"] == lang)
+    r = httpx.post(f"{url}/tokenize", json={"model": model, "prompt": text, "content": text,
+                                            "add_special_tokens": False}, timeout=60).json()
+    out = []
+    for w in token_windows(r["tokens"], size, n):
+        d = httpx.post(f"{url}/detokenize", json={"model": model, "tokens": w}, timeout=60).json()
+        out.append(d.get("prompt", d.get("content", "")))
+    return out
+
+
 def served_name(m: ModelSpec) -> str:
     return f"trbench-{m.name}-{m.quant}"   # guard'in pkill desenine uyar
 
@@ -208,7 +230,8 @@ def main() -> None:
 
     for m in cfg.models:
         base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
-                "enforce_eager": cfg.enforce_eager, **meta}
+                "enforce_eager": cfg.enforce_eager, "gpu_memory_utilization": cfg.gpu_memory_utilization,
+                "prompt_tokens_target": cfg.prompt_tokens, **meta}
         # Kimlik agirliga bagli: kontrol model indirildikten (ya da yerelde bulunduktan) SONRA.
         try:
             path, rev = download(m, cfg.engine)
@@ -239,22 +262,30 @@ def main() -> None:
             print(f"[runner] {m.name}/{m.quant}: {cfg.engine} BASLAMADI", flush=True)
             continue
 
+        url = f"http://127.0.0.1:{cfg.port}"
         try:
+            if cfg.warmup:                       # ilk isteklerin derleme/onbellek etkisi olcume girmesin
+                for lang in cfg.langs:
+                    asyncio.run(load_run(prompts_for(items, lang, cfg.warmup), url, served_name(m), 1, 32))
             for r in todo:
                 if proc.poll() is not None:
                     raise SystemExit("[runner] engine durdu (guard?) -> runner da duruyor")
-                prompts = prompts_for(items, r["lang"], r["n_requests"])
+                prompts = (matched_prompts(url, served_name(m), items, r["lang"], cfg.prompt_tokens,
+                                           r["n_requests"]) if cfg.prompt_tokens
+                           else prompts_for(items, r["lang"], r["n_requests"]))
+                queue = {} if cfg.queue_metrics else None
                 with PeakSampler() as ps:
                     results, wall = asyncio.run(load_run(
-                        prompts, f"http://127.0.0.1:{cfg.port}", served_name(m),
-                        r["concurrency"], cfg.max_tokens))
-                s = summarize(results, wall)
+                        prompts, url, served_name(m), r["concurrency"], cfg.max_tokens, queue=queue))
+                s = {**summarize(results, wall), **(queue or {})}
                 append(out, {**base, **r, "revision": rev, "status": "ok", **s,
                                  "gpu2_idle_mib": idle, "gpu2_peak_mib": ps.peak,
                                  "ts": datetime.now(timezone.utc).isoformat()})
                 print(f"[runner] {cfg.engine} {m.name}/{m.quant} {r['lang']} c={r['concurrency']} "
                       f"#{r['repeat']}: {s['tokens_per_s']:.0f} tok/s, TTFT {s['ttft_p50_ms']:.0f} ms, "
-                      f"GPU2 tepe {ps.peak} MiB, hata {s['errors']}", flush=True)
+                      f"GPU2 tepe {ps.peak} MiB, hata {s['errors']}"
+                      + (f", kuyruk max {s.get('queue_waiting_max')}, preempt {s.get('preemptions')}"
+                         if queue is not None else ""), flush=True)
         finally:
             stop(proc)
 

@@ -58,3 +58,46 @@ def test_concurrency_limit_is_respected():
     client = httpx.AsyncClient(transport=httpx.MockTransport(slow))
     asyncio.run(run(["p"] * 12, "http://x", "m", concurrency=4, client=client))
     assert state["peak"] == 4
+
+
+def test_parse_metrics_sums_labels_and_finds_preemptions():
+    from trbench.load.generator import parse_metrics
+    txt = """# HELP x
+vllm:num_requests_waiting{engine="0",model_name="m"} 3.0
+vllm:num_requests_running{engine="0",model_name="m"} 5.0
+vllm:num_preemptions_total{engine="0",model_name="m"} 2.0
+vllm:num_preemptions_created{engine="0"} 1700000000.0
+"""
+    m = parse_metrics(txt)
+    assert m == {"waiting": 3.0, "running": 5.0, "preemptions": 2.0}
+
+
+def test_queue_watch_records_waiting_and_preemption_delta():
+    calls = {"n": 0}
+
+    def server(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/metrics":
+            calls["n"] += 1
+            w = 4 if calls["n"] > 1 else 0
+            return httpx.Response(200, text=f"vllm:num_requests_waiting {w}\nvllm:num_preemptions_total {calls['n']}\n")
+        return fake_server(request)
+
+    async def go():
+        client = httpx.AsyncClient(transport=httpx.MockTransport(server))
+        q = {}
+
+        async def slow_run():
+            await asyncio.sleep(0.6)
+            return await run(["p"] * 2, "http://x", "m", 1, client=client, queue=q)
+        await slow_run()
+        return q
+
+    q = asyncio.run(go())
+    assert q["queue_samples"] >= 1 and q["queue_waiting_max"] >= 0
+
+
+def test_summary_has_p99_prompt_tokens_and_samples():
+    client = httpx.AsyncClient(transport=httpx.MockTransport(fake_server))
+    results, wall = asyncio.run(run(["p"] * 3, "http://x", "m", concurrency=1, client=client))
+    s = summarize(results, wall)
+    assert "ttft_p99_ms" in s and s["sample_outputs"][0] == "Ankara'ya gittim."

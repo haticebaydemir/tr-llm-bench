@@ -75,3 +75,18 @@ def test_done_keys_depend_on_experiment_id(tmp_path):
     p.write_text(json.dumps(row), encoding="utf-8")
     assert run_key({**row, "exp": "eski"}) in done_keys(p)
     assert run_key({**row, "exp": "yeni"}) not in done_keys(p)
+
+
+def test_token_windows_equal_size():
+    from trbench.runner import token_windows
+    w = token_windows(list(range(10)), 3, 5)
+    assert [len(x) for x in w] == [3] * 5 and w[0] == [0, 1, 2] and w[3] == [0, 1, 2]
+
+
+def test_new_config_fields_keep_old_fingerprint():
+    cfg = load("configs/gpu_llamacpp.yaml")
+    m = cfg.models[0]
+    old = cfg.fingerprint(m)
+    assert cfg.model_copy(update={"queue_metrics": True}).fingerprint(m) == old
+    assert cfg.model_copy(update={"prompt_tokens": 128}).fingerprint(m) != old
+    assert all(r["n_requests"] == max(16, 4 * r["concurrency"]) for r in cfg.runs())

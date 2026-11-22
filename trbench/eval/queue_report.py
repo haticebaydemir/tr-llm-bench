@@ -1,0 +1,77 @@
+"""Faz 6d: Turkce TTFT artisinin nedeni (kuyruk mu, token sayisi mi?).
+
+  python -m trbench.eval.queue_report                 # results/gpu_6d.jsonl
+  python -m trbench.eval.queue_report --samples       # zorlanmis ciktilarin ornekleri
+
+Her satir: KV butcesi (vLLM gpu_memory_utilization), prompt uzunlugu (dogal ya da TR/EN esit),
+dil, esanlilik -> tekrarlarin medyani; kuyruk vLLM /metrics'ten (kosu boyunca bekleyen istek).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import statistics as st
+from collections import defaultdict
+from pathlib import Path
+
+from trbench.results import pick
+
+R = Path("results")
+
+
+def load(path: Path) -> list[dict]:
+    rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+    rows = [r for r in rows if r.get("status") == "ok"]
+    return pick(rows, ("engine", "model", "quant", "gpu_memory_utilization", "prompt_tokens_target"),
+                ("lang", "concurrency", "repeat"))
+
+
+def table(rows: list[dict]) -> list[dict]:
+    g: dict[tuple, list[dict]] = defaultdict(list)
+    for r in rows:
+        g[(r.get("gpu_memory_utilization"), r.get("prompt_tokens_target"), r["lang"], r["concurrency"])].append(r)
+
+    def med(rs: list[dict], k: str) -> float | None:
+        v = [r[k] for r in rs if r.get(k) is not None]
+        return st.median(v) if v else None
+
+    out = []
+    for (u, pt, lang, c), rs in sorted(g.items(), key=lambda kv: (-(kv[0][0] or 0), kv[0][1] or 0,
+                                                                  kv[0][3], kv[0][2])):
+        out.append({"util": u, "prompt": pt or "natural", "lang": lang, "c": c, "n": len(rs),
+                    "tps": med(rs, "tokens_per_s"), "ttft50": med(rs, "ttft_p50_ms"),
+                    "ttft95": med(rs, "ttft_p95_ms"), "ttft99": med(rs, "ttft_p99_ms"),
+                    "ptok": med(rs, "prompt_tokens_mean"),
+                    "wait_max": max((r.get("queue_waiting_max") or 0) for r in rs),
+                    "wait_mean": med(rs, "queue_waiting_mean"),
+                    "preempt": sum((r.get("preemptions") or 0) for r in rs)})
+    return out
+
+
+def _f(x: float | None, fmt: str = "{:.0f}") -> str:
+    return "–" if x is None else fmt.format(x)
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--file", type=Path, default=R / "gpu_6d.jsonl")
+    ap.add_argument("--samples", action="store_true")
+    a = ap.parse_args()
+    if a.samples:
+        for r in load(R / "gpu_6d_samples.jsonl"):
+            print(f"\n=== {r['model']} {r['lang']} (tok/s {r['tokens_per_s']:.0f}, kelime/s {r['words_per_s']:.0f})")
+            for s in r.get("sample_outputs", []):
+                print("---", repr(s))
+        return
+    print("| KV budget (util) | Prompt tokens | Lang | c | n | tok/s | TTFT p50 / p95 / p99 (ms) "
+          "| Prompt tok (mean) | Waiting max / mean | Preemptions |")
+    print("|---|---|---|---|---|---|---|---|---|---|")
+    for t in table(load(a.file)):
+        print(f"| {t['util']} | {t['prompt']} | {t['lang'].upper()} | {t['c']} | {t['n']} | {_f(t['tps'])} | "
+              f"{_f(t['ttft50'])} / {_f(t['ttft95'])} / {_f(t['ttft99'])} | {_f(t['ptok'])} | "
+              f"{t['wait_max']:.0f} / {_f(t['wait_mean'], '{:.1f}')} | {t['preempt']:.0f} |")
+
+
+if __name__ == "__main__":
+    main()

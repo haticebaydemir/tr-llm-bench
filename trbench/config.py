@@ -59,6 +59,11 @@ class Phase3(BaseModel):
     repeats: int = Field(ge=1)
     results: str = "results/phase3.jsonl"
     models: list[ModelSpec]
+    # Faz 6d (yuk testi saglamlastirma); varsayilanlar eski config'leri degistirmez
+    warmup: int = Field(default=0, ge=0)             # olcumden once dil basina bu kadar istek (kaydedilmez)
+    min_requests: int = Field(default=16, ge=1)      # kosu basina en az istek (n = max(bu, 4 x esanlilik))
+    queue_metrics: bool = False                      # vLLM /metrics: bekleyen istek, preemption
+    prompt_tokens: int | None = Field(default=None, ge=16)   # TR ve EN prompt'lari ayni token sayisina kes
 
     @field_validator("port")
     @classmethod
@@ -112,13 +117,16 @@ class Phase3(BaseModel):
              "max_model_len": self.max_model_len, "max_tokens": self.max_tokens,
              "max_num_seqs": self.max_num_seqs, "util": self.gpu_memory_utilization,
              "eager": self.enforce_eager, "extra": self.extra_args}
+        for k in ("warmup", "min_requests", "prompt_tokens"):     # yalnizca degistiyse: eski fp'ler ayni kalir
+            if getattr(self, k) != type(self).model_fields[k].default:
+                d[k] = getattr(self, k)
         return hashlib.sha256(json.dumps(d, sort_keys=True).encode()).hexdigest()[:12]
 
     def runs(self) -> list[dict]:
         """Model x dil x esanlilik x tekrar. Model disarida: her model bir kez yuklenir."""
         return [
             {"engine": self.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
-             "lang": lang, "concurrency": c, "repeat": r, "n_requests": max(16, 4 * c),
+             "lang": lang, "concurrency": c, "repeat": r, "n_requests": max(self.min_requests, 4 * c),
              "fp": self.fingerprint(m)}
             for m in self.models
             for lang, c, r in product(self.langs, self.conc(m), range(self.repeats))
