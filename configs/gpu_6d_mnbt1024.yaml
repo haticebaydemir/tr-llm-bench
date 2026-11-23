@@ -1,0 +1,21 @@
+# Faz 7a: Turkce TTFT esigi adim basina prompt butcesinden mi? (--max-num-batched-tokens 1024)
+# Upstream vLLM 0.18.1 + GPTQ, util 0.20, dogal prompt'lar. 2048 = 6d ile ayni ayar, ayni gecede taban.
+# Beklenen: 4096'da 8 TR istek beklemez; 1024'te 8 EN istek de bekler. Sonuclar: results/gpu_6d_mnbt.jsonl
+#   bash scripts/night_mnbt.sh
+engine: vllm
+port: 18001
+gpu_memory_utilization: 0.20
+enforce_eager: true
+extra_args: [--max-num-batched-tokens, "1024", --quantization, gptq]
+max_model_len: 2048
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [4, 8]
+langs: [tr, en]
+repeats: 5
+warmup: 4
+min_requests: 24
+queue_metrics: true
+results: results/gpu_6d_mnbt.jsonl
+models:
+  - {name: mistral-7b-v0.3, quant: gptq-int4, params_b: 7.2, repo: RedHatAI/Mistral-7B-Instruct-v0.3-GPTQ-4bit, weights_gb_actual: 4.2}

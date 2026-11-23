@@ -231,7 +231,7 @@ def main() -> None:
     for m in cfg.models:
         base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
                 "enforce_eager": cfg.enforce_eager, "gpu_memory_utilization": cfg.gpu_memory_utilization,
-                "prompt_tokens_target": cfg.prompt_tokens, **meta}
+                "prompt_tokens_target": cfg.prompt_tokens, "extra_args": cfg.extra_args, **meta}
         # Kimlik agirliga bagli: kontrol model indirildikten (ya da yerelde bulunduktan) SONRA.
         try:
             path, rev = download(m, cfg.engine)

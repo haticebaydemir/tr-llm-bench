@@ -3,8 +3,11 @@
   python -m trbench.eval.queue_report                 # results/gpu_6d.jsonl
   python -m trbench.eval.queue_report --samples       # zorlanmis ciktilarin ornekleri
 
-Her satir: KV butcesi (vLLM gpu_memory_utilization), prompt uzunlugu (dogal ya da TR/EN esit),
-dil, esanlilik -> tekrarlarin medyani; kuyruk vLLM /metrics'ten (kosu boyunca bekleyen istek).
+  python -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl   # Faz 7a: adim basina prompt butcesi
+
+Her satir: KV butcesi (vLLM gpu_memory_utilization), adim basina prompt butcesi (--max-num-batched-tokens),
+prompt uzunlugu (dogal ya da TR/EN esit), dil, esanlilik -> tekrarlarin medyani;
+kuyruk vLLM /metrics'ten (kosu boyunca bekleyen istek).
 """
 
 from __future__ import annotations
@@ -20,26 +23,36 @@ from trbench.results import pick
 R = Path("results")
 
 
+def batched_tokens(r: dict) -> int | None:
+    """--max-num-batched-tokens degeri; eski satirlarda extra_args yok -> None."""
+    a = r.get("extra_args") or []
+    for i, x in enumerate(a[:-1]):
+        if x == "--max-num-batched-tokens":
+            return int(a[i + 1])
+    return None
+
+
 def load(path: Path) -> list[dict]:
     rows = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    rows = [r for r in rows if r.get("status") == "ok"]
-    return pick(rows, ("engine", "model", "quant", "gpu_memory_utilization", "prompt_tokens_target"),
-                ("lang", "concurrency", "repeat"))
+    rows = [{**r, "batched_tokens": batched_tokens(r)} for r in rows if r.get("status") == "ok"]
+    return pick(rows, ("engine", "model", "quant", "gpu_memory_utilization", "batched_tokens",
+                       "prompt_tokens_target"), ("lang", "concurrency", "repeat"))
 
 
 def table(rows: list[dict]) -> list[dict]:
     g: dict[tuple, list[dict]] = defaultdict(list)
     for r in rows:
-        g[(r.get("gpu_memory_utilization"), r.get("prompt_tokens_target"), r["lang"], r["concurrency"])].append(r)
+        g[(r.get("gpu_memory_utilization"), r.get("batched_tokens"), r.get("prompt_tokens_target"),
+           r["lang"], r["concurrency"])].append(r)
 
     def med(rs: list[dict], k: str) -> float | None:
         v = [r[k] for r in rs if r.get(k) is not None]
         return st.median(v) if v else None
 
     out = []
-    for (u, pt, lang, c), rs in sorted(g.items(), key=lambda kv: (-(kv[0][0] or 0), kv[0][1] or 0,
-                                                                  kv[0][3], kv[0][2])):
-        out.append({"util": u, "prompt": pt or "natural", "lang": lang, "c": c, "n": len(rs),
+    for (u, bt, pt, lang, c), rs in sorted(g.items(), key=lambda kv: (-(kv[0][0] or 0), kv[0][1] or 0,
+                                                                      kv[0][2] or 0, kv[0][4], kv[0][3])):
+        out.append({"util": u, "batched": bt, "prompt": pt or "natural", "lang": lang, "c": c, "n": len(rs),
                     "tps": med(rs, "tokens_per_s"), "ttft50": med(rs, "ttft_p50_ms"),
                     "ttft95": med(rs, "ttft_p95_ms"), "ttft99": med(rs, "ttft_p99_ms"),
                     "ptok": med(rs, "prompt_tokens_mean"),
@@ -64,11 +77,14 @@ def main() -> None:
             for s in r.get("sample_outputs", []):
                 print("---", repr(s))
         return
-    print("| KV budget (util) | Prompt tokens | Lang | c | n | tok/s | TTFT p50 / p95 / p99 (ms) "
-          "| Prompt tok (mean) | Waiting max / mean | Preemptions |")
-    print("|---|---|---|---|---|---|---|---|---|---|")
-    for t in table(load(a.file)):
-        print(f"| {t['util']} | {t['prompt']} | {t['lang'].upper()} | {t['c']} | {t['n']} | {_f(t['tps'])} | "
+    rows = table(load(a.file))
+    show_bt = any(t["batched"] is not None for t in rows)        # eski dosyada sutun yok: tablo aynen kalir
+    print("| KV budget (util) | " + ("Batched tokens | " if show_bt else "") + "Prompt tokens | Lang | c | n | "
+          "tok/s | TTFT p50 / p95 / p99 (ms) | Prompt tok (mean) | Waiting max / mean | Preemptions |")
+    print("|---|" + ("---|" if show_bt else "") + "---|---|---|---|---|---|---|---|---|")
+    for t in rows:
+        bt = f"{_f(t['batched'])} | " if show_bt else ""
+        print(f"| {t['util']} | {bt}{t['prompt']} | {t['lang'].upper()} | {t['c']} | {t['n']} | {_f(t['tps'])} | "
               f"{_f(t['ttft50'])} / {_f(t['ttft95'])} / {_f(t['ttft99'])} | {_f(t['ptok'])} | "
               f"{t['wait_max']:.0f} / {_f(t['wait_mean'], '{:.1f}')} | {t['preempt']:.0f} |")
 

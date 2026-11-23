@@ -126,7 +126,7 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
   without CUDA graphs vLLM pays a per-step overhead that batching later amortizes.
 - **At 8 requests under the tight budget, Turkish loses vLLM's advantage, and this holds on upstream vLLM too.**
   With both vLLM builds the Turkish first token takes 2.2–2.5 s while English stays at 0.25–0.3 s; with upstream
-  GPTQ Turkish throughput (107 tok/s) even falls below llama.cpp (127). Section 2e shows the cause is the
+  GPTQ Turkish throughput (107 tok/s) even falls below llama.cpp (127). Section 2c shows the cause is the
   number of prompt tokens, not the language.
 - The two vLLM columns differ in both build and 4-bit format, so the gap between them (e.g. 199 vs 137 tok/s
   in English at 8 requests) is not attributable to either alone.
@@ -134,7 +134,7 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
   Their 128k–152k vocabularies keep large embedding and output layers in 16-bit, so loading took
   6.5 GiB and left no room for KV cache (vLLM reported −1.01 GiB available).
 
-### 2e. Why Turkish waits longer: token count, not language
+### 2c. Why Turkish waits longer: token count, not language
 
 Upstream vLLM 0.18.1, Mistral-7B GPTQ, closed-loop load, 5 repeats per cell after a warm-up, 24 requests per run;
 the queue is read from vLLM's `/metrics` every 0.25 s (`configs/gpu_6d_*.yaml`, `python -m trbench.eval.queue_report`).
@@ -163,7 +163,7 @@ the queue is read from vLLM's `/metrics` every 0.25 s (`configs/gpu_6d_*.yaml`, 
 - These numbers describe ~5–6 GB of vLLM memory on a V100; a larger budget or a higher batched-token limit
   would move or remove the threshold.
 
-### 2c. Context length on GPU (llama-bench)
+### 2d. Context length on GPU (llama-bench)
 
 Median of 3 repeats per cell; the GPU is shared, and single repeats occasionally dropped
 (e.g. 37, 37, 21 tok/s), which the median ignores.
@@ -181,7 +181,7 @@ Median of 3 repeats per cell; the GPU is shared, and single repeats occasionally
 - Decoding with 4,096 tokens already in context is 7–10% slower (Gemma: 14%). Since Turkish needs
   1.1–2.2× more tokens for the same text, it reaches that point sooner.
 
-### 2d. Earlier run on an exclusive GPU (historical)
+### 2e. Earlier run on an exclusive GPU (historical)
 
 Qwen2.5-7B-Instruct, vLLM, one V100 32 GB, 256 output tokens per request, median of 3 repeats.
 *Provenance:* measured on 16 Nov 2026 with an earlier version of `configs/phase3.yaml`
@@ -468,7 +468,7 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
 - Turkish trails English on most models both on translated public benchmarks and on the original items
   written for this project (see *Public vs original items*), so the gap is not only contamination or translation.
 - At 8 concurrent requests on an 8 GB budget, vLLM's Turkish time to first token rises to 2.2–2.6 s for Mistral-7B,
-  and disappears when Turkish and English prompts have the same number of tokens (section 2e). No request queue
+  and disappears when Turkish and English prompts have the same number of tokens (section 2c). No request queue
   or preemption was recorded.
 
 **Interpreted (likely, not proven here):**
