@@ -87,6 +87,7 @@ def test_new_config_fields_keep_old_fingerprint():
     cfg = load("configs/gpu_llamacpp.yaml")
     m = cfg.models[0]
     old = cfg.fingerprint(m)
-    assert cfg.model_copy(update={"queue_metrics": True}).fingerprint(m) == old
+    assert cfg.model_copy(update={"queue_metrics": False}).fingerprint(m) == old
+    assert cfg.model_copy(update={"queue_metrics": True}).fingerprint(m) != old
     assert cfg.model_copy(update={"prompt_tokens": 128}).fingerprint(m) != old
     assert all(r["n_requests"] == max(16, 4 * r["concurrency"]) for r in cfg.runs())

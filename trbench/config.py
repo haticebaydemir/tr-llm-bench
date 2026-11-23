@@ -117,6 +117,8 @@ class Phase3(BaseModel):
              "max_model_len": self.max_model_len, "max_tokens": self.max_tokens,
              "max_num_seqs": self.max_num_seqs, "util": self.gpu_memory_utilization,
              "eager": self.enforce_eager, "extra": self.extra_args}
+        if self.queue_metrics:                   # /metrics sorgusu olcumu etkileyebilir; kapaliyken eski fp ayni
+            d["queue_metrics"] = True
         for k in ("warmup", "min_requests", "prompt_tokens"):     # yalnizca degistiyse: eski fp'ler ayni kalir
             if getattr(self, k) != type(self).model_fields[k].default:
                 d[k] = getattr(self, k)

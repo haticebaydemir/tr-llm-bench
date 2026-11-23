@@ -35,3 +35,45 @@ def test_experiment_id_stable_and_sensitive():
     a = experiment_id({"eval_sha": "x", "weights": "w", "git_commit": "c"})
     assert a == experiment_id({"git_commit": "c", "weights": "w", "eval_sha": "x"})   # sira onemsiz
     assert a != experiment_id({"eval_sha": "y", "weights": "w", "git_commit": "c"})
+
+
+def _repo(tmp_path):
+    import subprocess
+    def g(*a):
+        subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)
+    g("init", "-q")
+    g("config", "user.email", "t@t")
+    g("config", "user.name", "t")
+    for f in ("trbench/x.py", "results/r.jsonl", "README.md"):
+        (tmp_path / f).parent.mkdir(exist_ok=True)
+        (tmp_path / f).write_text("a\n")
+    g("add", ".")
+    g("commit", "-qm", "i")
+    return tmp_path
+
+
+def test_results_write_does_not_dirty_runs(tmp_path):
+    from trbench.provenance import code_diff_sha, git_commit, require_clean
+    root = _repo(tmp_path)
+    (root / "results/r.jsonl").write_text("a\nb\n")          # bir onceki kosunun yazdigi satir
+    assert git_commit(root)[1] is False
+    assert code_diff_sha(root) is None and require_clean(False, root) is None
+
+
+def test_code_change_blocks_run_unless_allowed(tmp_path):
+    import pytest
+
+    from trbench.provenance import code_diff_sha, git_commit, require_clean
+    root = _repo(tmp_path)
+    (root / "trbench/x.py").write_text("b\n")
+    assert git_commit(root)[1] is True
+    with pytest.raises(SystemExit):
+        require_clean(False, root)
+    assert require_clean(True, root) == code_diff_sha(root) is not None
+
+
+def test_readme_change_is_dirty_but_not_blocking(tmp_path):
+    from trbench.provenance import git_commit, require_clean
+    root = _repo(tmp_path)
+    (root / "README.md").write_text("b\n")
+    assert git_commit(root)[1] is True and require_clean(False, root) is None

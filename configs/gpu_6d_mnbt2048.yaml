@@ -1,12 +1,12 @@
 # Faz 7a: Turkce TTFT esigi adim basina prompt butcesinden mi? (--max-num-batched-tokens 2048)
-# Upstream vLLM 0.18.1 + GPTQ, util 0.20, dogal prompt'lar. 2048 = 6d ile ayni ayar, ayni gecede taban.
+# Upstream vLLM 0.18.1 + GPTQ, util 0.20, dogal prompt'lar, prefix cache KAPALI (her tekrar gercek prefill).
 # Beklenen: 4096'da 8 TR istek beklemez; 1024'te 8 EN istek de bekler. Sonuclar: results/gpu_6d_mnbt.jsonl
 #   bash scripts/night_mnbt.sh
 engine: vllm
 port: 18001
 gpu_memory_utilization: 0.20
 enforce_eager: true
-extra_args: [--max-num-batched-tokens, "2048", --quantization, gptq]
+extra_args: [--max-num-batched-tokens, "2048", --quantization, gptq, --no-enable-prefix-caching]
 max_model_len: 2048
 max_tokens: 256
 max_num_seqs: 8

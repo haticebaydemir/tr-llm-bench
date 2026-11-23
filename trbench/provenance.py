@@ -1,7 +1,9 @@
 """Her sonuc satirinin 'hangi kod, hangi veri, hangi agirlik' bilgisi.
 
 Amac: bir sonuc satirindan, onu ureten ortami birebir geri kurabilmek.
-  git_commit  : kodun surumu (+ kaydedilmemis degisiklik varsa dirty=True)
+  git_commit  : kodun surumu (+ results/ disinda kaydedilmemis degisiklik varsa dirty=True)
+  code_diff   : trbench/configs/scripts'te kaydedilmemis degisikligin ozeti; varsa GPU kosusu baslamaz
+                (--allow-dirty ile acilirsa bu ozet deney kimligine girer)
   *_sha256    : veri seti ve agirlik dosyasinin icerik ozeti (ayni isim, farkli dosya olmasin)
   exp         : deney kimligi; sonucu degistirebilecek her seyin ozeti (resume ve raporlar bunu kullanir)
 """
@@ -50,12 +52,36 @@ def file_sha256(path: Path) -> str | None:
     return digest
 
 
-def git_commit() -> tuple[str, bool]:
-    def git(*a: str) -> str:
-        return subprocess.run(["git", "-C", str(ROOT), *a], check=False,
-                              capture_output=True, text=True).stdout.strip()
-    sha = git("rev-parse", "HEAD")
-    return (sha or "unknown"), bool(git("status", "--porcelain", "--untracked-files=no"))
+CODE_PATHS = ("trbench", "configs", "scripts")
+
+
+def _git(root: Path, *a: str) -> str:
+    return subprocess.run(["git", "-C", str(root), *a], check=False,
+                          capture_output=True, text=True).stdout.strip()
+
+
+def git_commit(root: Path = ROOT) -> tuple[str, bool]:
+    """Kosu sonuclari takip edilen results/*.jsonl'e yaziliyor: o dosyalar 'kirli' sayilmaz,
+    yoksa her kosu bir sonrakini kirli gosterir."""
+    sha = _git(root, "rev-parse", "HEAD")
+    status = _git(root, "status", "--porcelain", "--untracked-files=no", "--", ".", ":(exclude)results")
+    return (sha or "unknown"), bool(status)
+
+
+def code_diff_sha(root: Path = ROOT) -> str | None:
+    """Kod, config ve script'teki kaydedilmemis degisikligin ozeti; temizse None."""
+    d = _git(root, "diff", "HEAD", "--", *CODE_PATHS)
+    return sha256_text(d) if d else None
+
+
+def require_clean(allow_dirty: bool, root: Path = ROOT) -> str | None:
+    """Kodda kaydedilmemis degisiklik varsa kosu baslamaz. --allow-dirty ile baslarsa
+    degisikligin ozeti dondurulur ve deney kimligine girer."""
+    d = code_diff_sha(root)
+    if d and not allow_dirty:
+        raise SystemExit("[provenance] trbench/configs/scripts'te commit edilmemis degisiklik var: "
+                         "once commit et (ya da bilerek --allow-dirty)")
+    return d
 
 
 def hardware() -> dict:

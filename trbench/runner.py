@@ -31,7 +31,7 @@ import httpx
 from trbench.config import ModelSpec, Phase3, load
 from trbench.load.generator import run as load_run
 from trbench.load.generator import summarize
-from trbench.provenance import experiment_id, file_sha256, provenance, sha256_text
+from trbench.provenance import experiment_id, file_sha256, provenance, require_clean, sha256_text
 
 ROOT = Path("/disk3/trbench")
 MODELS_DIR = ROOT / "models"
@@ -219,6 +219,8 @@ def stop(proc: subprocess.Popen) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("config", nargs="?", default="configs/gpu_llamacpp.yaml")
+    ap.add_argument("--allow-dirty", action="store_true", help="commit edilmemis kodla kos (ozeti kimlige girer)")
+    code_diff = require_clean(ap.parse_args().allow_dirty)
     cfg = load(ap.parse_args().config)
     out = Path(cfg.results)
     items = [json.loads(x) for x in EVAL.read_text(encoding="utf-8").splitlines()]
@@ -231,7 +233,8 @@ def main() -> None:
     for m in cfg.models:
         base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
                 "enforce_eager": cfg.enforce_eager, "gpu_memory_utilization": cfg.gpu_memory_utilization,
-                "prompt_tokens_target": cfg.prompt_tokens, "extra_args": cfg.extra_args, **meta}
+                "prompt_tokens_target": cfg.prompt_tokens, "extra_args": cfg.extra_args,
+                "queue_metrics": cfg.queue_metrics, **meta}
         # Kimlik agirliga bagli: kontrol model indirildikten (ya da yerelde bulunduktan) SONRA.
         try:
             path, rev = download(m, cfg.engine)
@@ -246,7 +249,8 @@ def main() -> None:
         base["exp"] = experiment_id({
             "fp": cfg.fingerprint(m), "eval_sha": meta["eval_sha"], "revision": rev,
             "weights": base.get("weights_sha256"), "git_commit": meta["git_commit"],
-            "engine_version": meta["vllm"] if cfg.engine == "vllm" else meta["llamacpp"]})
+            "engine_version": meta["vllm"] if cfg.engine == "vllm" else meta["llamacpp"],
+            **({"code_diff": code_diff} if code_diff else {})})       # temizken eski kimlikler aynen
         todo = [r for r in cfg.runs() if (r["model"], r["quant"]) == (m.name, m.quant)
                 and run_key({**r, "exp": base["exp"]}) not in done]
         if not todo:

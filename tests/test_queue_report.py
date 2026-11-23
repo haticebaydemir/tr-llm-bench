@@ -26,3 +26,9 @@ def test_table_separates_batched_budgets():
             "prompt_tokens_mean": 390, "queue_waiting_max": 0, "queue_waiting_mean": 0.0, "preemptions": 0}
     t = table([{**base, "batched_tokens": 2048}, {**base, "batched_tokens": 4096, "ttft_p50_ms": 600}])
     assert [(x["batched"], x["ttft50"]) for x in t] == [(2048, 2000), (4096, 600)]
+
+
+def test_variant_from_row():
+    from trbench.eval.queue_report import variant
+    assert variant({}) == "cache on, metrics on"                       # eski 6d satirlari
+    assert variant({"extra_args": ["--no-enable-prefix-caching"], "queue_metrics": False}) == "cache off, metrics off"

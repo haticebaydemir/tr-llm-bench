@@ -21,7 +21,7 @@ import httpx
 from trbench.eval.build import OUT as EVAL
 from trbench.eval.schema import Item
 from trbench.eval.scorers import score
-from trbench.provenance import experiment_id, file_sha256, provenance
+from trbench.provenance import experiment_id, file_sha256, provenance, require_clean
 
 OUT = Path("results/phase4.jsonl")
 # Kategoriye gore cikti siniri: TR ayni icerik icin ~1.6x token harciyor (Faz 1),
@@ -117,7 +117,9 @@ def main() -> None:
     ap.add_argument("--out", type=Path, default=OUT, help="sonuc dosyasi (GPU olcumleri ayri tutulur)")
     ap.add_argument("--weights", type=Path, help="agirlik dosyasi (GGUF): SHA-256'si deney kimligine girer")
     ap.add_argument("--extra", default="", help="sunucuya verilen ek ayarlar (orn. KV cache tipi); kimlige girer")
+    ap.add_argument("--allow-dirty", action="store_true", help="commit edilmemis kodla kos (ozeti kimlige girer)")
     a = ap.parse_args()
+    code_diff = require_clean(a.allow_dirty)
     items = load_items()
     if a.limit:
         items = items[: a.limit]
@@ -129,7 +131,7 @@ def main() -> None:
         "label": a.label, "eval_sha": meta["eval_sha"], "git_commit": meta["git_commit"],
         "server_build": meta.get("server_build"),
         "weights": meta.get("weights_sha256") or meta.get("weights_file"),
-        "extra": a.extra, "max_tokens": MAX_TOKENS})
+        "extra": a.extra, "max_tokens": MAX_TOKENS, **({"code_diff": code_diff} if code_diff else {})})
     n = asyncio.run(run(items, a.url, a.label, a.parallel, a.out, meta=meta))
     rows = [json.loads(x) for x in a.out.read_text(encoding="utf-8").splitlines()]
     print(f"{n} soru soruldu, {time.time() - t0:.0f} sn")
