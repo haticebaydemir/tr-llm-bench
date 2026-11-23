@@ -64,6 +64,11 @@ The GPU was shared with a production service. The benchmark ran on one V100 with
 about 8 GB, under a guard that stops it if the other GPUs or the service are disturbed. Peak total
 memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB). 138 runs, 0 errors.
 
+**TTFT caveat.** Each run repeats the same prompts, and vLLM's prefix cache is on by default, so after the first
+repeat vLLM's time to first token is largely a cache hit. Section 2c re-measures it with the cache off; vLLM
+TTFT values in 2a, 2b and 2d were measured with the cache on and understate a cold first token.
+Throughput (tok/s) is dominated by the 256-token decode and is not affected in the same way.
+
 ### 2a. Seven models, llama.cpp, Q4_K_M
 
 Median of 3 repeats. Three speeds, all for Turkish output:
@@ -125,9 +130,10 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
 - **llama.cpp wins for a single user, vLLM wins at 4 requests** (+33–41% Turkish with either vLLM):
   without CUDA graphs vLLM pays a per-step overhead that batching later amortizes.
 - **At 8 requests under the tight budget, Turkish loses vLLM's advantage, and this holds on upstream vLLM too.**
-  With both vLLM builds the Turkish first token takes 2.2–2.5 s while English stays at 0.25–0.3 s; with upstream
-  GPTQ Turkish throughput (107 tok/s) even falls below llama.cpp (127). Section 2c shows the cause is the
-  number of prompt tokens, not the language.
+  With upstream GPTQ, Turkish throughput (107 tok/s) even falls below llama.cpp (127).
+- The vLLM TTFT values in this table were measured with the prefix cache on (see the caveat above): the 0.25–0.3 s
+  English first token at 8 requests is a cache hit, while the Turkish one stays at 2.2–2.5 s (likely because its
+  longer prompts do not all stay in the small cache), so the two are not comparable. Section 2c gives cold-prefill values for both languages.
 - The two vLLM columns differ in both build and 4-bit format, so the gap between them (e.g. 199 vs 137 tok/s
   in English at 8 requests) is not attributable to either alone.
 - Only Mistral could be compared: Llama-3.1 and Qwen2.5 AWQ did not start within the budget.
@@ -136,32 +142,33 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
 
 ### 2c. Why Turkish waits longer: token count, not language
 
-Upstream vLLM 0.18.1, Mistral-7B GPTQ, closed-loop load, 5 repeats per cell after a warm-up, 24 requests per run;
-the queue is read from vLLM's `/metrics` every 0.25 s (`configs/gpu_6d_*.yaml`, `python -m trbench.eval.queue_report`).
+Upstream vLLM 0.18.1, Mistral-7B GPTQ, `gpu_memory_utilization` 0.20, closed-loop load, 5 repeats per cell after a
+warm-up, 24 requests per run. **Prefix cache off** (`--no-enable-prefix-caching`), so every repeat pays the full
+prefill; the queue is read from vLLM's `/metrics` every 0.25 s (`configs/gpu_6d_mnbt*.yaml`,
+`python -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl`).
 *Prompt tokens* = natural eval prompts, or both languages cut to exactly 300 tokens with the model's own tokenizer.
 
-| KV budget (util) | Prompt tokens | Lang | Concurrency | tok/s | TTFT p50 / p95 / p99 (ms) | Mean prompt tokens |
-|---|---|---|---|---|---|---|
-| 0.20 | natural | EN | 8 | 137 | 302 / 419 / 467 | 197 |
-| 0.20 | natural | TR | 8 | 110 | **2562** / 3081 / 3367 | 393 |
-| 0.20 | 300 | EN | 8 | 121 | **1754** / 1892 / 1896 | 304 |
-| 0.20 | 300 | TR | 8 | 117 | **1765** / 1908 / 1916 | 304 |
-| 0.20 | natural | TR | 4 | 104 | 213 / 307 / 308 | 399 |
-| 0.19 | natural | TR | 4 | 93 | 1328 / 1803 / 1806 | 399 |
-| 0.18 | natural | TR | 4 | 93 | 1477 / 2025 / 2026 | 399 |
-| 0.18 | natural | EN | 8 | 127 | 1402 / 1558 / 1561 | 197 |
+| Prompt tokens | Concurrency | EN TTFT p50 (ms) | TR TTFT p50 (ms) | TR / EN | Mean prompt tokens EN / TR |
+|---|---|---|---|---|---|
+| natural | 4 | 923 | 1599 | 1.73× | 200 / 399 |
+| natural | 8 | 1677 | 2340 | 1.40× | 197 / 393 |
+| 300 | 4 | 1360 | 1361 | 1.00× | 304 / 304 |
+| 300 | 8 | 2341 | 2270 | 0.97× | 304 / 304 |
 
-- **With equal prompt lengths the language difference disappears:** at 300 tokens each, English and Turkish
-  wait the same 1.75 s. The Turkish delay with natural prompts comes from Turkish prompts being 2× longer in tokens,
-  i.e. from the tokenizer tax, not from anything specific to Turkish.
-- **It is not a request queue.** vLLM reported at most 1 waiting request and no preemptions in any run, so the
-  earlier explanation (requests waiting for KV-cache blocks) does not hold. A likely mechanism is the per-step
-  prompt budget (`--max-num-batched-tokens 2048`): 8 Turkish prompts need ~3,100 tokens of prefill, more than one
-  step allows, while 8 English prompts (~1,600) fit in one. This was not tested by varying that setting.
-- **A smaller KV budget pulls the threshold down:** at util 0.18–0.19 Turkish already waits 1.3–1.5 s at 4
-  requests, and at 0.18 English too reaches 1.4 s at 8 requests.
-- These numbers describe ~5–6 GB of vLLM memory on a V100; a larger budget or a higher batched-token limit
-  would move or remove the threshold.
+- **With equal prompt lengths the language difference disappears.** With natural prompts Turkish waits
+  1.4–1.7× longer because its prompts have 2× the tokens (the tokenizer tax); cut to 300 tokens each, both
+  languages wait the same. Five repeats per cell agree within ±4% at 4 requests.
+- **It is not a request queue.** vLLM reported at most 2 waiting requests and no preemptions in any run.
+- **It is not the per-step prompt budget.** Raising `--max-num-batched-tokens` from 2048 to 4096 did not shorten
+  the Turkish wait at 8 requests (3059 ms, slower), and lowering it to 1024 did not lengthen the English one
+  (1309 ms). An earlier version of this README suggested that budget as the cause; this run rules it out.
+- **The prefix cache hides the cost.** With the cache on (vLLM's default) and the same prompts repeated, TTFT at
+  4 requests drops to ~0.21 s in both languages after the first repeat (first repeat: 0.84 s EN, 1.40 s TR). Real
+  traffic rarely repeats whole prompts, so the cold values above are the relevant ones; a shared system prompt
+  would sit between the two.
+- Polling `/metrics` does not change the result (EN, 4 requests: 920 ms off, 923 ms on).
+- These numbers describe ~5–6 GB of vLLM memory on a V100 in eager mode; absolute values will differ elsewhere,
+  but the proportionality to prompt tokens is what carries over.
 
 ### 2d. Context length on GPU (llama-bench)
 
@@ -445,8 +452,8 @@ tax is paid again in long contexts.
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
 tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (57 to 119
 content tok/s on the same GPU, a 2× cost difference per Turkish word) and, in our 8 GB-budget vLLM
-runs with Mistral-7B, how long users wait for the first token at 8 concurrent requests (2.2–2.6 s in Turkish
-vs 0.25–0.3 s in English, with both vLLM builds, and equal once prompts have the same token count); quantization down to Q4_K_M costs Turkish no more than English in any of
+runs with Mistral-7B, how long users wait for the first token (1.4–1.7× longer in Turkish with Mistral-7B on vLLM, cache off,
+and equal once prompts have the same token count); quantization down to Q4_K_M costs Turkish no more than English in any of
 seven models, and neither does a q8_0 or q4_0 KV cache; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
 model size (4B Gemma-3 and Qwen3 beat several 8B models); and the remaining quality gap lies in the base model (small for Gemma-2-9B,
 large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
@@ -467,19 +474,18 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
   (5 models). 242 pairs give intervals of roughly ±4–6 points: a smaller effect cannot be excluded.
 - Turkish trails English on most models both on translated public benchmarks and on the original items
   written for this project (see *Public vs original items*), so the gap is not only contamination or translation.
-- At 8 concurrent requests on an 8 GB budget, vLLM's Turkish time to first token rises to 2.2–2.6 s for Mistral-7B,
-  and disappears when Turkish and English prompts have the same number of tokens (section 2c). No request queue
-  or preemption was recorded.
+- With vLLM's prefix cache off, Mistral-7B's Turkish time to first token is 1.4–1.7× the English one at 4–8
+  concurrent requests, and the difference disappears when both prompts have the same number of tokens
+  (section 2c). Neither a request queue, preemption nor the per-step prompt budget explains it.
 
 **Interpreted (likely, not proven here):**
-- The TTFT threshold comes from the per-step prompt budget (`--max-num-batched-tokens 2048`): 8 Turkish prompts
-  exceed it, 8 English prompts do not. Consistent with the data, but that setting was not varied.
 - Part of the larger gap on public benchmarks comes from translation quality (8 confirmed errors) and possibly
   from contamination; this cannot be separated from item difficulty with the current data.
 
 **Not generalizable from these data:**
-- Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB; an unconstrained or newer GPU
-  may not show the threshold at all.
+- Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB.
+- vLLM TTFT values in sections 2a, 2b and 2d (prefix cache on, repeated prompts); only section 2c measures a cold
+  first token.
 - Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
 - Per-category differences: with 40–60 items per category the intervals are wide (up to ±18 points for knowledge).
 
