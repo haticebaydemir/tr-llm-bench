@@ -498,6 +498,15 @@ Eval set: [HaticeB/tr-llm-bench-eval](https://huggingface.co/datasets/HaticeB/tr
 
 ## Reproduce
 
+Two installs, for two purposes:
+
+- **Development** (run the tests, read the code, rerun the analysis on the published result files):
+  `pip install -e ".[dev,tok]"`. `pyproject.toml` gives only lower bounds, so you get current versions.
+- **Re-measuring** (numbers comparable to the ones above): install the pinned environment from `env/`,
+  `pip install -r env/requirements-server.lock` for the benchmark venv and
+  `env/requirements-vllm-upstream.lock` for upstream vLLM, and check the hardware and drivers against
+  `env/SYSTEM.md`.
+
 ```bash
 pip install -e ".[dev,tok]"
 pytest -q

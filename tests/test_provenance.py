@@ -77,3 +77,24 @@ def test_readme_change_is_dirty_but_not_blocking(tmp_path):
     root = _repo(tmp_path)
     (root / "README.md").write_text("b\n")
     assert git_commit(root)[1] is True and require_clean(False, root) is None
+
+
+def test_untracked_code_file_blocks_run(tmp_path):
+    import pytest
+
+    from trbench.provenance import code_diff_sha, require_clean
+    root = _repo(tmp_path)
+    (root / "trbench/yeni.py").write_text("x = 1\n")          # commit edilmemis yeni dosya
+    d1 = code_diff_sha(root)
+    assert d1 is not None
+    with pytest.raises(SystemExit):
+        require_clean(False, root)
+    (root / "trbench/yeni.py").write_text("x = 2\n")          # icerik degisince ozet de degisir
+    assert code_diff_sha(root) != d1
+
+
+def test_untracked_results_file_does_not_block(tmp_path):
+    from trbench.provenance import require_clean
+    root = _repo(tmp_path)
+    (root / "results/yeni.jsonl").write_text("{}\n")
+    assert require_clean(False, root) is None

@@ -69,8 +69,13 @@ def git_commit(root: Path = ROOT) -> tuple[str, bool]:
 
 
 def code_diff_sha(root: Path = ROOT) -> str | None:
-    """Kod, config ve script'teki kaydedilmemis degisikligin ozeti; temizse None."""
+    """Kod, config ve script'teki kaydedilmemis degisikligin ozeti; temizse None.
+    Takip edilmeyen yeni dosyalar (orn. commit edilmemis bir .py ya da config) da sayilir:
+    adlari ve icerik hash'leri ozete girer."""
     d = _git(root, "diff", "HEAD", "--", *CODE_PATHS)
+    new = _git(root, "ls-files", "--others", "--exclude-standard", "--", *CODE_PATHS).splitlines()
+    for f in sorted(new):
+        d += f"\n?? {f} {file_sha256(root / f)}"
     return sha256_text(d) if d else None
 
 
