@@ -5,6 +5,7 @@ Kural: secim deterministik (sabit seed) -> herkes ayni soruyu alir.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import random
 import re
@@ -111,6 +112,48 @@ def pair_gsm8k(tr: pd.DataFrame, en: pd.DataFrame) -> list[tuple[int, int]]:
 
 
 GSM8K_PAIRS = Path(__file__).with_name("gsm8k_pairs.json")
+
+
+GSM8K_REPOS = {"tr": "malhajar/gsm8k_tr-v0.2", "en": "openai/gsm8k"}
+
+
+def question_hash(text: str) -> str:
+    """Soru metninin ozeti: cift, satir numarasiyla degil icerikle tanimlanir."""
+    return hashlib.sha256(str(text).strip().encode("utf-8")).hexdigest()[:16]
+
+
+def load_manifest(path: Path = GSM8K_PAIRS) -> dict | None:
+    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+
+
+def manifest_revisions(doc: dict | None) -> dict[str, str | None]:
+    """Manifestteki veri seti surumleri (yoksa None: en son surum indirilir)."""
+    src = (doc or {}).get("sources", {})
+    return {lang: (src.get(lang) or {}).get("revision") for lang in GSM8K_REPOS}
+
+
+def verify_manifest(doc: dict, tr: pd.DataFrame, en: pd.DataFrame) -> None:
+    """Her cift icin TR ve EN soru metninin ozeti manifestle ayni olmali; pozisyon tek basina kimlik degil.
+    Ozet yoksa ya da uyusmuyorsa hata (sessizce baska soruyla olcmek yerine)."""
+    bad = []
+    for p in doc["pairs"]:
+        if "tr_sha" not in p or "en_sha" not in p:
+            raise ValueError("GSM8K manifestinde soru ozeti yok: once 'python -m trbench.eval.gsm8k_manifest'")
+        for lang, df in (("tr", tr), ("en", en)):
+            i = p[lang]
+            if i >= len(df) or question_hash(df.iloc[i]["question"]) != p[f"{lang}_sha"]:
+                bad.append(f"{lang}:{i}")
+    if bad:
+        raise ValueError(f"GSM8K kaynagi manifestle uyusmuyor (soru metni degismis): {bad[:5]} "
+                         f"({len(bad)} soru)")
+
+
+def add_hashes(doc: dict, tr: pd.DataFrame, en: pd.DataFrame, revisions: dict[str, str]) -> dict:
+    """Mevcut (denetlenmis) ciftlere soru ozetlerini ve veri seti surumlerini ekler; ciftler degismez."""
+    pairs = [{**p, "tr_sha": question_hash(tr.iloc[p["tr"]]["question"]),
+              "en_sha": question_hash(en.iloc[p["en"]]["question"])} for p in doc["pairs"]]
+    return {**doc, "sources": {lang: {"repo": GSM8K_REPOS[lang], "revision": revisions[lang]}
+                               for lang in GSM8K_REPOS}, "pairs": pairs}
 
 
 def load_verified_pairs(path: Path = GSM8K_PAIRS) -> list[tuple[int, int]] | None:

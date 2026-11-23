@@ -154,3 +154,27 @@ def test_global_mmlu_selects_from_filtered_table():
     tr.loc[0, "question"] = "YANLIS"
     items = global_mmlu_items(tr, _mmlu("en", ["CS", "CA", "CA"]), 2)
     assert all("YANLIS" not in i.prompt for i in items)
+
+
+def test_manifest_hashes_catch_changed_question():
+    import pytest
+
+    from trbench.eval.sources import add_hashes, manifest_revisions, verify_manifest
+    en = _df(range(5))
+    tr = en.assign(question=[f"s{i}" for i in range(5)])
+    doc = add_hashes({"pairs": [{"tr": 1, "en": 1, "answer": "1"}]}, tr, en, {"tr": "a", "en": "b"})
+    assert manifest_revisions(doc) == {"tr": "a", "en": "b"}
+    verify_manifest(doc, tr, en)                                    # ayni kaynak: gecer
+    shifted = tr.assign(question=[f"s{i}" for i in (0, 2, 3, 4, 5)])  # ayni pozisyon, baska soru
+    with pytest.raises(ValueError, match="uyusmuyor"):
+        verify_manifest(doc, shifted, en)
+
+
+def test_manifest_without_hashes_is_refused():
+    import pytest
+
+    from trbench.eval.sources import manifest_revisions, verify_manifest
+    en = _df(range(3))
+    assert manifest_revisions(None) == {"tr": None, "en": None}
+    with pytest.raises(ValueError, match="gsm8k_manifest"):
+        verify_manifest({"pairs": [{"tr": 0, "en": 0}]}, en, en)

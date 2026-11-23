@@ -17,13 +17,17 @@ from trbench.eval.morphology import morphology_items
 from trbench.eval.schema import Item
 from trbench.eval.sources import (
     GSM8K_PAIRS,
+    GSM8K_REPOS,
     belebele_items,
     choose_gsm8k,
     global_mmlu_items,
     gsm8k_items,
+    load_manifest,
     load_verified_pairs,
+    manifest_revisions,
     pick_parallel_ids,
     save_verified_pairs,
+    verify_manifest,
 )
 
 OUT = Path("data/eval/eval_set.jsonl")
@@ -43,20 +47,28 @@ def build_reading() -> list[Item]:
     return belebele_items(tr, "tr", ids) + belebele_items(en, "en", ids)
 
 
-def load_test_parquet(repo: str, must_contain: str = "") -> pd.DataFrame:
-    """Repo'daki test parquet dosyasini bulur (yolu sabit yazmadan)."""
+def load_test_parquet(repo: str, must_contain: str = "", revision: str | None = None) -> pd.DataFrame:
+    """Repo'daki test parquet dosyasini bulur (yolu sabit yazmadan). revision: sabit surum (commit sha)."""
     from huggingface_hub import HfApi, hf_hub_download
 
-    files = [f for f in HfApi().list_repo_files(repo, repo_type="dataset")
+    files = [f for f in HfApi().list_repo_files(repo, repo_type="dataset", revision=revision)
              if f.endswith(".parquet") and "test" in f and must_contain in f]
     if len(files) != 1:
         raise RuntimeError(f"{repo}: test dosyasi belirsiz -> {files}")
-    return pd.read_parquet(hf_hub_download(repo, files[0], repo_type="dataset"))
+    return pd.read_parquet(hf_hub_download(repo, files[0], repo_type="dataset", revision=revision))
+
+
+def load_gsm8k(revisions: dict[str, str | None]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    en = load_test_parquet(GSM8K_REPOS["en"], must_contain="main/", revision=revisions["en"])
+    tr = load_test_parquet(GSM8K_REPOS["tr"], revision=revisions["tr"])
+    return tr, en
 
 
 def build_math() -> list[Item]:
-    en = load_test_parquet("openai/gsm8k", must_contain="main/")
-    tr = load_test_parquet("malhajar/gsm8k_tr-v0.2")
+    manifest = load_manifest()
+    tr, en = load_gsm8k(manifest_revisions(manifest))     # manifestteki sabit surum
+    if manifest is not None:
+        verify_manifest(manifest, tr, en)
     verified = load_verified_pairs()
     items = gsm8k_items(tr, en, N["math"], verified)
     if verified is None:

@@ -4,202 +4,292 @@
   {
    "tr": 5,
    "en": 5,
-   "answer": "64"
+   "answer": "64",
+   "tr_sha": "b80cdc7e5bae9354",
+   "en_sha": "f76242d8ac82991c"
   },
   {
    "tr": 23,
    "en": 23,
-   "answer": "8"
+   "answer": "8",
+   "tr_sha": "60f7d958b0ea4133",
+   "en_sha": "fe06ee435f2baa14"
   },
   {
    "tr": 156,
    "en": 156,
-   "answer": "1400"
+   "answer": "1400",
+   "tr_sha": "6fff4bbb2d4c0567",
+   "en_sha": "3ca0e746f10ccf16"
   },
   {
    "tr": 165,
    "en": 165,
-   "answer": "77"
+   "answer": "77",
+   "tr_sha": "5e61b4ca7eb499f1",
+   "en_sha": "af00da18ead667e5"
   },
   {
    "tr": 183,
    "en": 183,
-   "answer": "2"
+   "answer": "2",
+   "tr_sha": "57964aec4720fdd8",
+   "en_sha": "f29cc49868a9b93f"
   },
   {
    "tr": 200,
    "en": 200,
-   "answer": "55"
+   "answer": "55",
+   "tr_sha": "e9d897e86f0ccb6d",
+   "en_sha": "8c508389106306ae"
   },
   {
    "tr": 210,
    "en": 210,
-   "answer": "10"
+   "answer": "10",
+   "tr_sha": "dc81057684285759",
+   "en_sha": "0f4d92e85aa0c2c5"
   },
   {
    "tr": 226,
    "en": 226,
-   "answer": "33"
+   "answer": "33",
+   "tr_sha": "7d2bf9f4e0f6628f",
+   "en_sha": "d58e5838fc7750bc"
   },
   {
    "tr": 243,
    "en": 243,
-   "answer": "250"
+   "answer": "250",
+   "tr_sha": "550a25f52a0fe43a",
+   "en_sha": "30861a3b0fea0754"
   },
   {
    "tr": 433,
    "en": 434,
-   "answer": "5"
+   "answer": "5",
+   "tr_sha": "6cd7b0fe6e677098",
+   "en_sha": "e07778dc07d71e39"
   },
   {
    "tr": 461,
    "en": 463,
-   "answer": "18"
+   "answer": "18",
+   "tr_sha": "3dc3cdb4317ad39a",
+   "en_sha": "5ee6b042514f5d82"
   },
   {
    "tr": 496,
    "en": 498,
-   "answer": "40"
+   "answer": "40",
+   "tr_sha": "7084ac3c8be1a91e",
+   "en_sha": "d4638532e6721130"
   },
   {
    "tr": 520,
    "en": 522,
-   "answer": "29"
+   "answer": "29",
+   "tr_sha": "a0ef6486a4a8b60a",
+   "en_sha": "e0a832a622c474e0"
   },
   {
    "tr": 594,
    "en": 596,
-   "answer": "260"
+   "answer": "260",
+   "tr_sha": "635e39e121f723c5",
+   "en_sha": "84015aa6b72f339f"
   },
   {
    "tr": 595,
    "en": 597,
-   "answer": "90"
+   "answer": "90",
+   "tr_sha": "ca30c52e2c8e2379",
+   "en_sha": "2bd885f27fb27410"
   },
   {
    "tr": 604,
    "en": 606,
-   "answer": "6"
+   "answer": "6",
+   "tr_sha": "961a7ea5180dacf2",
+   "en_sha": "1f35a9a0e3041a52"
   },
   {
    "tr": 649,
    "en": 651,
-   "answer": "2100"
+   "answer": "2100",
+   "tr_sha": "e35485f713ca4b96",
+   "en_sha": "8a4fdde087b05414"
   },
   {
    "tr": 660,
    "en": 662,
-   "answer": "7"
+   "answer": "7",
+   "tr_sha": "7473137a64901db3",
+   "en_sha": "dc790f42bdf053e8"
   },
   {
    "tr": 704,
    "en": 706,
-   "answer": "9"
+   "answer": "9",
+   "tr_sha": "e7adaae76e7a1f98",
+   "en_sha": "5b7f6f1902a383b9"
   },
   {
    "tr": 719,
    "en": 721,
-   "answer": "2450"
+   "answer": "2450",
+   "tr_sha": "391c7b98926fe9b2",
+   "en_sha": "4067bce91754443c"
   },
   {
    "tr": 737,
    "en": 739,
-   "answer": "98"
+   "answer": "98",
+   "tr_sha": "569d22ca22ba3252",
+   "en_sha": "ef1ef8136de8d73c"
   },
   {
    "tr": 777,
    "en": 779,
-   "answer": "255"
+   "answer": "255",
+   "tr_sha": "2b2aa005a96e2052",
+   "en_sha": "82d3577a32c3a104"
   },
   {
    "tr": 820,
    "en": 822,
-   "answer": "1260"
+   "answer": "1260",
+   "tr_sha": "a5069f3ac8e0ead5",
+   "en_sha": "61380d43c14f00bd"
   },
   {
    "tr": 868,
    "en": 870,
-   "answer": "40"
+   "answer": "40",
+   "tr_sha": "84c70e20e9ec377a",
+   "en_sha": "420c37cb2f0fe6a1"
   },
   {
    "tr": 910,
    "en": 912,
-   "answer": "6"
+   "answer": "6",
+   "tr_sha": "128bf455f504cca9",
+   "en_sha": "bed5f91bcc432bac"
   },
   {
    "tr": 927,
    "en": 929,
-   "answer": "60"
+   "answer": "60",
+   "tr_sha": "9a42198fe1d5569d",
+   "en_sha": "457b371bcc4edec6"
   },
   {
    "tr": 1012,
    "en": 1014,
-   "answer": "3"
+   "answer": "3",
+   "tr_sha": "63b403cce552af22",
+   "en_sha": "60dcca05c2f0750c"
   },
   {
    "tr": 1013,
    "en": 1015,
-   "answer": "78"
+   "answer": "78",
+   "tr_sha": "5db5f95cd9d71d0f",
+   "en_sha": "f4a8f2794e9e498c"
   },
   {
    "tr": 1038,
    "en": 1040,
-   "answer": "736"
+   "answer": "736",
+   "tr_sha": "9e832e978be60cbe",
+   "en_sha": "613e7767a989ba48"
   },
   {
    "tr": 1058,
    "en": 1060,
-   "answer": "31"
+   "answer": "31",
+   "tr_sha": "2327c0ecb29e13c6",
+   "en_sha": "e9e2335d2c234b69"
   },
   {
    "tr": 1061,
    "en": 1063,
-   "answer": "320"
+   "answer": "320",
+   "tr_sha": "73fb6f977bac694f",
+   "en_sha": "c640d6f5e3942afb"
   },
   {
    "tr": 1111,
    "en": 1113,
-   "answer": "-3"
+   "answer": "-3",
+   "tr_sha": "8b5b16c9d57ff0e1",
+   "en_sha": "04b3b6a76c29971f"
   },
   {
    "tr": 1131,
    "en": 1133,
-   "answer": "50"
+   "answer": "50",
+   "tr_sha": "67ff88b57832912c",
+   "en_sha": "c26bef6514ff7760"
   },
   {
    "tr": 1149,
    "en": 1151,
-   "answer": "50"
+   "answer": "50",
+   "tr_sha": "db12741f2d2589b9",
+   "en_sha": "78e327fb5c7c09c5"
   },
   {
    "tr": 1151,
    "en": 1153,
-   "answer": "20"
+   "answer": "20",
+   "tr_sha": "5b590235f35e043f",
+   "en_sha": "7ff105924f5ef42b"
   },
   {
    "tr": 1182,
    "en": 1184,
-   "answer": "306"
+   "answer": "306",
+   "tr_sha": "3b4a8abb2cef4c38",
+   "en_sha": "1a93ae062315cbef"
   },
   {
    "tr": 1211,
    "en": 1213,
-   "answer": "31"
+   "answer": "31",
+   "tr_sha": "ece14f6b838176f1",
+   "en_sha": "06591e3000388735"
   },
   {
    "tr": 1240,
    "en": 1242,
-   "answer": "20"
+   "answer": "20",
+   "tr_sha": "7d51c768a0d69f21",
+   "en_sha": "738f3e641810ffc1"
   },
   {
    "tr": 1267,
    "en": 1269,
-   "answer": "54"
+   "answer": "54",
+   "tr_sha": "677ce5b00f97c0c4",
+   "en_sha": "c9da308003667fe1"
   },
   {
    "tr": 1282,
    "en": 1284,
-   "answer": "25"
+   "answer": "25",
+   "tr_sha": "2b89089e2ed64c05",
+   "en_sha": "36085227984ab443"
   }
- ]
+ ],
+ "sources": {
+  "tr": {
+   "repo": "malhajar/gsm8k_tr-v0.2",
+   "revision": "f05ded624e64f2e9b2c384c91ed13e46922c70a1"
+  },
+  "en": {
+   "repo": "openai/gsm8k",
+   "revision": "740312add88f781978c0658806c59bc2815b9866"
+  }
+ }
 }
