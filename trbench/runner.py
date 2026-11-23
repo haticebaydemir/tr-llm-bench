@@ -234,7 +234,7 @@ def main() -> None:
         base = {"engine": cfg.engine, "model": m.name, "quant": m.quant, "repo": m.repo,
                 "enforce_eager": cfg.enforce_eager, "gpu_memory_utilization": cfg.gpu_memory_utilization,
                 "prompt_tokens_target": cfg.prompt_tokens, "extra_args": cfg.extra_args,
-                "queue_metrics": cfg.queue_metrics, **meta}
+                "queue_metrics": cfg.queue_metrics, "cache_prompt": cfg.cache_prompt, **meta}
         # Kimlik agirliga bagli: kontrol model indirildikten (ya da yerelde bulunduktan) SONRA.
         try:
             path, rev = download(m, cfg.engine)
@@ -280,7 +280,8 @@ def main() -> None:
                 queue = {} if cfg.queue_metrics else None
                 with PeakSampler() as ps:
                     results, wall = asyncio.run(load_run(
-                        prompts, url, served_name(m), r["concurrency"], cfg.max_tokens, queue=queue))
+                        prompts, url, served_name(m), r["concurrency"], cfg.max_tokens, queue=queue,
+                        extra=None if cfg.cache_prompt is None else {"cache_prompt": cfg.cache_prompt}))
                 s = {**summarize(results, wall), **(queue or {})}
                 append(out, {**base, **r, "revision": rev, "status": "ok", **s,
                                  "gpu2_idle_mib": idle, "gpu2_peak_mib": ps.peak,

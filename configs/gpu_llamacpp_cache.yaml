@@ -1,0 +1,15 @@
+# Faz 7m: llama.cpp TTFT prompt onbellegi. Mistral-7B Q4_K_M, ayni gece iki ayar: sunucu varsayilani (cache)
+# ve istekte cache_prompt: false (nocache). 5 tekrar, warm-up. Sonuclar: results/gpu_llamacpp_cache.jsonl
+#   bash scripts/night_llamacpp_cache.sh
+engine: llamacpp
+port: 18010
+max_model_len: 1536
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [1, 4, 8]
+langs: [tr, en]
+repeats: 5
+warmup: 4
+results: results/gpu_llamacpp_cache.jsonl
+models:
+  - {name: mistral-7b-v0.3, quant: q4_k_m, params_b: 7.2, repo: /disk3/trbench/gguf/mistral-7b-v0.3, weights_gb_actual: 4.4}

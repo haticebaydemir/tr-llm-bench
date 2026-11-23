@@ -35,7 +35,8 @@ def batched_tokens(r: dict) -> int | None:
 
 def variant(r: dict) -> str:
     """Prefix cache ve /metrics sorgusu: 7a/7k kontrolleri. Eski 6d satirlari: cache acik, sorgu acik."""
-    pc = "off" if "--no-enable-prefix-caching" in (r.get("extra_args") or []) else "on"
+    off = "--no-enable-prefix-caching" in (r.get("extra_args") or []) or r.get("cache_prompt") is False
+    pc = "off" if off else "on"
     qm = "on" if r.get("queue_metrics", True) else "off"
     return f"cache {pc}, metrics {qm}"
 

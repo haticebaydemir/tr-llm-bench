@@ -64,6 +64,8 @@ class Phase3(BaseModel):
     min_requests: int = Field(default=16, ge=1)      # kosu basina en az istek (n = max(bu, 4 x esanlilik))
     queue_metrics: bool = False                      # vLLM /metrics: bekleyen istek, preemption
     prompt_tokens: int | None = Field(default=None, ge=16)   # TR ve EN prompt'lari ayni token sayisina kes
+    # Faz 7m: llama-server istek basina prompt onbellegi; None = sunucu varsayilani (istekte alan yok)
+    cache_prompt: bool | None = None
 
     @field_validator("port")
     @classmethod
@@ -119,7 +121,7 @@ class Phase3(BaseModel):
              "eager": self.enforce_eager, "extra": self.extra_args}
         if self.queue_metrics:                   # /metrics sorgusu olcumu etkileyebilir; kapaliyken eski fp ayni
             d["queue_metrics"] = True
-        for k in ("warmup", "min_requests", "prompt_tokens"):     # yalnizca degistiyse: eski fp'ler ayni kalir
+        for k in ("warmup", "min_requests", "prompt_tokens", "cache_prompt"):     # yalnizca degistiyse: eski fp'ler ayni kalir
             if getattr(self, k) != type(self).model_fields[k].default:
                 d[k] = getattr(self, k)
         return hashlib.sha256(json.dumps(d, sort_keys=True).encode()).hexdigest()[:12]

@@ -25,3 +25,4 @@ data/flores/
 !results/gpu_6d.jsonl
 !results/gpu_6d_samples.jsonl
 !results/gpu_6d_mnbt.jsonl
+!results/gpu_llamacpp_cache.jsonl

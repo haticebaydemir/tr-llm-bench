@@ -32,3 +32,9 @@ def test_variant_from_row():
     from trbench.eval.queue_report import variant
     assert variant({}) == "cache on, metrics on"                       # eski 6d satirlari
     assert variant({"extra_args": ["--no-enable-prefix-caching"], "queue_metrics": False}) == "cache off, metrics off"
+
+
+def test_variant_llamacpp_cache_prompt_off():
+    from trbench.eval.queue_report import variant
+    assert variant({"cache_prompt": False, "queue_metrics": False}) == "cache off, metrics off"
+    assert variant({"cache_prompt": None, "queue_metrics": False}) == "cache on, metrics off"

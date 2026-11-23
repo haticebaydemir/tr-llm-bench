@@ -32,8 +32,8 @@ class Result:
     prompt_tokens: int | None = None
 
 
-def payload(model: str, prompt: str, max_tokens: int) -> dict:
-    return {
+def payload(model: str, prompt: str, max_tokens: int, extra: dict | None = None) -> dict:
+    return {**(extra or {}),
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
@@ -118,7 +118,7 @@ async def watch_queue(client: httpx.AsyncClient, url: str, stop: asyncio.Event,
 
 async def run(prompts: list[str], url: str, model: str, concurrency: int,
               max_tokens: int = 256, client: httpx.AsyncClient | None = None,
-              queue: dict | None = None) -> tuple[list[Result], float]:
+              queue: dict | None = None, extra: dict | None = None) -> tuple[list[Result], float]:
     """Kapali dongu: ayni anda en fazla `concurrency` istek; biri bitince digeri baslar.
     queue verilirse (dict) kosu boyunca /metrics yoklanir ve sonuc oraya yazilir."""
     own = client is None
@@ -127,7 +127,7 @@ async def run(prompts: list[str], url: str, model: str, concurrency: int,
 
     async def guarded(p: str) -> Result:
         async with sem:
-            return await one_request(client, url, payload(model, p, max_tokens))
+            return await one_request(client, url, payload(model, p, max_tokens, extra))
 
     stop = asyncio.Event()
     watcher = asyncio.create_task(watch_queue(client, url, stop)) if queue is not None else None

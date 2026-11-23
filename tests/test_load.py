@@ -101,3 +101,9 @@ def test_summary_has_p99_prompt_tokens_and_samples():
     results, wall = asyncio.run(run(["p"] * 3, "http://x", "m", concurrency=1, client=client))
     s = summarize(results, wall)
     assert "ttft_p99_ms" in s and s["sample_outputs"][0] == "Ankara'ya gittim."
+
+
+def test_payload_extra_fields_for_llamacpp_cache():
+    from trbench.load.generator import payload
+    assert "cache_prompt" not in payload("m", "p", 16)
+    assert payload("m", "p", 16, {"cache_prompt": False})["cache_prompt"] is False
