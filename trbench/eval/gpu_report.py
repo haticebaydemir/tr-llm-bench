@@ -149,8 +149,10 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--usd-per-hour", type=float, default=1.0,
                     help="GPU saat fiyati varsayimi; maliyet bununla dogrusal olceklenir")
+    ap.add_argument("--llamacpp-file", default="gpu_llamacpp.jsonl",
+                    help="results/ altindaki llama.cpp dosyasi (orn. gpu_llamacpp_cold.jsonl: onbellek kapali)")
     a = ap.parse_args()
-    s = serving([R / "gpu_llamacpp.jsonl", R / "gpu_vllm.jsonl"])
+    s = serving([R / a.llamacpp_file, R / "gpu_vllm.jsonl"])
     print(f"kosu: {int(s['n'].sum())}, hata: {int(s['errors'].sum())}, "
           f"GPU 2 toplam tepe: {s['peak'].max() / 1024:.1f} GB\n")
     t = model_table(s, tokenizer_stats(), a.usd_per_hour)

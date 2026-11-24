@@ -1,0 +1,23 @@
+# Faz 7p: 2a tablosu (7 model, llama.cpp Q4_K_M) prompt onbellegi KAPALI (cache_prompt: false).
+# gpu_llamacpp.yaml ile ayni modeller, esanlilik ve tekrar; tek fark onbellek + warm-up.
+# Sonuclar: results/gpu_llamacpp_cold.jsonl. Gece: bash scripts/night_llamacpp_cold.sh
+engine: llamacpp
+port: 18010
+max_model_len: 1536
+max_tokens: 256
+max_num_seqs: 8
+concurrency: [1, 4, 8]
+langs: [tr, en]
+repeats: 3
+warmup: 4
+cache_prompt: false
+results: results/gpu_llamacpp_cold.jsonl
+models:
+  - {name: qwen2.5-7b, quant: q4_k_m, params_b: 7.6, repo: Qwen/Qwen2.5-7B-Instruct-GGUF, weights_gb_actual: 4.7, kv_kb_per_token: 56}
+  - {name: llama-3.1-8b, quant: q4_k_m, params_b: 8.0, repo: /disk3/trbench/gguf/llama-3.1-8b, weights_gb_actual: 4.9}
+  - {name: mistral-7b-v0.3, quant: q4_k_m, params_b: 7.2, repo: /disk3/trbench/gguf/mistral-7b-v0.3, weights_gb_actual: 4.4}
+  - {name: aya-expanse-8b, quant: q4_k_m, params_b: 8.0, repo: /disk3/trbench/gguf/aya-expanse-8b, weights_gb_actual: 5.1}
+  - {name: cosmos-tr-llama-8b, quant: q4_k_m, params_b: 8.0, repo: /disk3/trbench/gguf/cosmos-tr-llama-8b, weights_gb_actual: 4.9}
+  - {name: trendyol-7b, quant: q4_k_m, params_b: 7.2, repo: /disk3/trbench/gguf/trendyol-7b, weights_gb_actual: 4.4, chat_template: configs/chat_templates/mistral_inst.jinja}
+  # Gemma-2-9B: buyuk agirlik + buyuk KV (344 KB/token) -> en fazla 2 esanli istek sigar
+  - {name: gemma-2-9b, quant: q4_k_m, params_b: 9.2, repo: /disk3/trbench/gguf/gemma-2-9b, weights_gb_actual: 5.8, kv_kb_per_token: 344, concurrency: [1, 2]}
