@@ -6,6 +6,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 FAIL=0   # Faz 7r: bir adim hata verirse rapor uretilmez, son satir HATA olur, cikis kodu 1
+PY="${TRBENCH_PY:-/disk3/trbench/venv/bin/python}"   # testte sahte python ile degistirilir
 export TRBENCH_VLLM=/disk3/trbench/venv-vllm-up/bin/vllm
 echo "[7a] basladi $(date)"
 for n in 2048 2048_cache 2048_nometrics 4096 1024; do
@@ -15,6 +16,10 @@ if [ "$FAIL" -ne 0 ]; then
   echo "[7a] HATA: en az bir adim basarisiz, rapor uretilmedi $(date)"
   exit 1
 fi
-/disk3/trbench/venv/bin/python -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl
-/disk3/trbench/venv/bin/python -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl --by-repeat
+"$PY" -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl || { echo "[7a] rapor hata"; FAIL=1; }
+"$PY" -m trbench.eval.queue_report --file results/gpu_6d_mnbt.jsonl --by-repeat || { echo "[7a] rapor --by-repeat hata"; FAIL=1; }
+if [ "$FAIL" -ne 0 ]; then
+  echo "[7a] HATA: rapor uretimi basarisiz $(date)"
+  exit 1
+fi
 echo "[7a] HEPSI BITTI $(date)"

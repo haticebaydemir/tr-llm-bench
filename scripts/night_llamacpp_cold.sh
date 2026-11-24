@@ -4,11 +4,16 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 FAIL=0   # Faz 7r: bir adim hata verirse rapor uretilmez, son satir HATA olur, cikis kodu 1
+PY="${TRBENCH_PY:-/disk3/trbench/venv/bin/python}"   # testte sahte python ile degistirilir
 echo "[7p] basladi $(date)"
 bash scripts/gpu_bench.sh configs/gpu_llamacpp_cold.yaml || { echo "[7p] hata"; FAIL=1; }
 if [ "$FAIL" -ne 0 ]; then
   echo "[7p] HATA: en az bir adim basarisiz, rapor uretilmedi $(date)"
   exit 1
 fi
-/disk3/trbench/venv/bin/python -m trbench.eval.gpu_report --llamacpp-file gpu_llamacpp_cold.jsonl
+"$PY" -m trbench.eval.gpu_report --llamacpp-file gpu_llamacpp_cold.jsonl || { echo "[7p] rapor hata"; FAIL=1; }
+if [ "$FAIL" -ne 0 ]; then
+  echo "[7p] HATA: rapor uretimi basarisiz $(date)"
+  exit 1
+fi
 echo "[7p] HEPSI BITTI $(date)"
