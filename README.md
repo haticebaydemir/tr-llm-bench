@@ -64,10 +64,11 @@ The GPU was shared with a production service. The benchmark ran on one V100 with
 about 8 GB, under a guard that stops it if the other GPUs or the service are disturbed. Peak total
 memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB). 138 runs, 0 errors.
 
-**TTFT caveat.** Each run repeats the same prompts, and vLLM's prefix cache is on by default, so after the first
-repeat vLLM's time to first token is largely a cache hit. Section 2c re-measures it with the cache off; vLLM
-TTFT values in 2a, 2b and 2d were measured with the cache on and understate a cold first token.
-Throughput (tok/s) is dominated by the 256-token decode and is not affected in the same way.
+**Prompt-cache caveat.** Each run repeats the same prompts, and both engines cache prompts by default (vLLM's
+prefix cache; llama-server's per-request `cache_prompt`), so after the first repeat the time to first token is
+largely a cache hit. TTFT values in 2a, 2b and 2d were measured that way and understate a cold first token
+5–8× for llama.cpp. For llama.cpp, throughput is also inflated, by 15–35% at 4–8 requests. Sections 2b
+(*Cold cache*) and 2c re-measure Mistral-7B with the cache off; the 7-model table in 2a was not re-run.
 
 ### 2a. Seven models, llama.cpp, Q4_K_M
 
@@ -127,7 +128,7 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
 | 8 | EN | 128 | 199 | 137 | 560 / 248 / 298 |
 | 8 | TR | 127 | 152 | 107 | 683 / **2482** / **2157** |
 
-- **llama.cpp wins for a single user, vLLM wins at 4 requests** (+33–41% Turkish with either vLLM):
+- **With caches on, llama.cpp wins for a single user, vLLM wins at 4 requests** (+33–41% Turkish with either vLLM):
   without CUDA graphs vLLM pays a per-step overhead that batching later amortizes.
 - **At 8 requests under the tight budget, Turkish loses vLLM's advantage, and this holds on upstream vLLM too.**
   With upstream GPTQ, Turkish throughput (107 tok/s) even falls below llama.cpp (127).
@@ -139,6 +140,29 @@ Same model, same GPU, same ~8 GB budget, vLLM in eager mode (CUDA graphs need mo
 - Only Mistral could be compared: Llama-3.1 and Qwen2.5 AWQ did not start within the budget.
   Their 128k–152k vocabularies keep large embedding and output layers in 16-bit, so loading took
   6.5 GiB and left no room for KV cache (vLLM reported −1.01 GiB available).
+
+#### Cold cache: Mistral-7B with the prompt cache off
+
+The table above was measured with both engines' prompt caches on. Re-measured with the cache off
+(llama.cpp: `cache_prompt: false` per request, `configs/gpu_llamacpp_nocache.yaml`; vLLM 0.18.1 GPTQ:
+`--no-enable-prefix-caching`, `configs/gpu_6d_mnbt2048.yaml`), 5 repeats per cell, natural eval prompts:
+
+| Concurrency | Lang | llama.cpp tok/s | vLLM 0.18.1 GPTQ tok/s | TTFT p50 llama.cpp / vLLM (ms) |
+|---|---|---|---|---|
+| 1 | EN | 35 | – | 521 / – |
+| 1 | TR | 34 | – | 708 / – |
+| 4 | EN | 74 | 105 | 1999 / 923 |
+| 4 | TR | 48 | 94 | 2988 / 1599 |
+| 8 | EN | 113 | 126 | 3550 / 1677 |
+| 8 | TR | 97 | 108 | 4537 / 2340 |
+
+- **Cold, vLLM leads at 4 and 8 requests in both languages.** At 4 requests Turkish's 2× longer prompts cost
+  llama.cpp 35% of its throughput (48 vs 74 tok/s) and vLLM 10% (94 vs 105); at 8 requests both lose 14%.
+- **Cold first tokens take 4–8× longer than the cached values above,** and Turkish waits 1.3–1.5× longer than
+  English on llama.cpp, in line with vLLM (section 2c).
+- vLLM was not measured at 1 request with the cache off. The same-day cache-on llama.cpp run reproduced the
+  pattern above (TTFT 87–711 ms after the first repeat), but its Turkish throughput at 4 requests was 55 tok/s,
+  not 76 as in the earlier run; that difference is not explained.
 
 ### 2c. Why Turkish waits longer: token count, not language
 
@@ -476,7 +500,8 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
   written for this project (see *Public vs original items*), so the gap is not only contamination or translation.
 - With vLLM's prefix cache off, Mistral-7B's Turkish time to first token is 1.4–1.7× the English one at 4–8
   concurrent requests, and the difference disappears when both prompts have the same number of tokens
-  (section 2c). Neither a request queue, preemption nor the per-step prompt budget explains it.
+  (section 2c). Neither a request queue, preemption nor the per-step prompt budget explains it. llama.cpp shows
+  the same direction with the cache off: 1.3–1.5× at 1–8 requests (section 2b, *Cold cache*).
 
 **Interpreted (likely, not proven here):**
 - Part of the larger gap on public benchmarks comes from translation quality (8 confirmed errors) and possibly
@@ -484,8 +509,8 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
 
 **Not generalizable from these data:**
 - Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB.
-- vLLM TTFT values in sections 2a, 2b and 2d (prefix cache on, repeated prompts); only section 2c measures a cold
-  first token.
+- TTFT values in sections 2a, 2b (first table) and 2d, and llama.cpp throughput in 2a (prompt caches on,
+  repeated prompts); only 2b *Cold cache* and 2c measure a cold first token, for Mistral-7B only.
 - Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
 - Per-category differences: with 40–60 items per category the intervals are wide (up to ±18 points for knowledge).
 
