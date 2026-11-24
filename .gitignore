@@ -29,3 +29,4 @@ data/flores/
 !results/gpu_llamacpp_cold.jsonl
 # Faz 7q: eski hash onbellekleri (artik repo disinda tutuluyor)
 *.sha256
+!results/gpu_context.jsonl

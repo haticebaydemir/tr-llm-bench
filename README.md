@@ -1,5 +1,7 @@
 # TR-LLM Bench
 
+**English** · [Türkçe](README.tr.md)
+
 How much does Turkish cost to serve on open LLMs, and how much quality does
 quantization take away from Turkish compared with English?
 
