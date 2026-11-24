@@ -66,9 +66,10 @@ memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB
 
 **Prompt-cache caveat.** Each run repeats the same prompts, and both engines cache prompts by default (vLLM's
 prefix cache; llama-server's per-request `cache_prompt`), so after the first repeat the time to first token is
-largely a cache hit. TTFT values in 2a, 2b and 2d were measured that way and understate a cold first token
-5–8× for llama.cpp. For llama.cpp, throughput is also inflated, by 15–35% at 4–8 requests. Section 2a and
-2b (*Cold cache*) and 2c are measured with the cache off; the first table in 2b and section 2d are not.
+largely a cache hit, and llama.cpp throughput is inflated by 15–35% at 4–8 requests. Sections 2a,
+2b (*Cold cache*) and 2c are measured with the cache off. The first table in 2b and the historical vLLM run in
+2e were measured with it on: their TTFT values understate a cold first token (4–8× for llama.cpp). Section 2d
+uses `llama-bench`, which has no prompt cache.
 
 ### 2a. Seven models, llama.cpp, Q4_K_M
 
@@ -513,8 +514,8 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
 
 **Not generalizable from these data:**
 - Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB.
-- TTFT and llama.cpp throughput in the first table of 2b and in 2d (prompt caches on, repeated prompts); 2a,
-  2b *Cold cache* and 2c are measured cold.
+- TTFT and llama.cpp throughput in the first table of 2b and TTFT in 2e (prompt caches on, repeated prompts);
+  2a, 2b *Cold cache* and 2c are measured cold, and 2d uses `llama-bench`, which has no prompt cache.
 - Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
 - Tail latency. Each run has 16–32 requests, so p95/p99 are close to the maximum of a run; the README reports
   TTFT as p50 only. Three repeats suffice for throughput (spread ≤ 2.4% tok/s across repeats in 2a).
