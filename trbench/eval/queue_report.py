@@ -99,7 +99,7 @@ def main() -> None:
             print(f"| {_f(t['batched'])} | {t['variant']} | {t['prompt']} | {t['lang'].upper()} | {t['c']} | {reps} |")
         return
     print("| KV budget (util) | " + ("Batched tokens | Variant | " if show_bt else "") + "Prompt tokens | Lang | c | n | "
-          "tok/s | TTFT p50 / p95 / p99 (ms) | Prompt tok (mean) | Waiting max / mean | Preemptions |")
+          "tok/s | TTFT p50 / p95 / p99 (ms; 16-32 requests per run, so p99 ~ max) | Prompt tok (mean) | Waiting max / mean | Preemptions |")
     print("|---|" + ("---|---|" if show_bt else "") + "---|---|---|---|---|---|---|---|---|")
     for t in rows:
         bt = f"{_f(t['batched'])} | {t['variant']} | " if show_bt else ""

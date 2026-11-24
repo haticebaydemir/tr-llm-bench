@@ -516,6 +516,8 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
 - TTFT and llama.cpp throughput in the first table of 2b and in 2d (prompt caches on, repeated prompts); 2a,
   2b *Cold cache* and 2c are measured cold.
 - Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
+- Tail latency. Each run has 16–32 requests, so p95/p99 are close to the maximum of a run; the README reports
+  TTFT as p50 only. Three repeats suffice for throughput (spread ≤ 2.4% tok/s across repeats in 2a).
 - Per-category differences: with 40–60 items per category the intervals are wide (up to ±18 points for knowledge).
 
 Other limits: the engine comparison covers only Mistral-7B (the only 4-bit vLLM model that fit), with vLLM in

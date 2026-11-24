@@ -25,17 +25,27 @@ def sha256_text(s: str) -> str:
     return hashlib.sha256(s.encode("utf-8")).hexdigest()[:16]
 
 
-def file_sha256(path: Path) -> str | None:
-    """Buyuk dosyalar (GGUF) icin sonuc yanina '.sha256' onbellegi; dosya degisirse yeniden hesaplanir."""
+def sha_cache_dir() -> Path:
+    """Hash onbellegi repo DISINDA: TRBENCH_CACHE ya da ~/.cache/trbench/sha256 (Faz 7q)."""
+    import os
+    return Path(os.environ.get("TRBENCH_CACHE", Path.home() / ".cache" / "trbench")) / "sha256"
+
+
+def file_sha256(path: Path, cache: bool = True) -> str | None:
+    """Buyuk dosyalar (GGUF) icin hash; onbellek repo disinda tek klasorde, dosya degisirse yeniden hesaplanir.
+    cache=False: hicbir dosya yazilmaz (commit edilmemis kod dosyalari icin)."""
     path = Path(path)
     if not path.is_file():
         return None
+    if not cache:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
     st = path.stat()
     # boyut + nanosaniye mtime + inode: ayni saniyede ayni boyutla degisen dosya da yakalanir
     stamp = f"{st.st_size}:{st.st_mtime_ns}:{st.st_ino}"
-    cache = path.with_name(path.name + ".sha256")
+    key = hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()[:32]
+    cache_file = sha_cache_dir() / f"{key}.sha256"
     try:
-        old_stamp, old = cache.read_text().split()
+        old_stamp, old = cache_file.read_text().split()
         if old_stamp == stamp:
             return old
     except (OSError, ValueError):
@@ -46,7 +56,8 @@ def file_sha256(path: Path) -> str | None:
             h.update(chunk)
     digest = h.hexdigest()
     try:
-        cache.write_text(f"{stamp} {digest}\n")
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(f"{stamp} {digest}\n")
     except OSError:
         pass
     return digest
@@ -75,7 +86,7 @@ def code_diff_sha(root: Path = ROOT) -> str | None:
     d = _git(root, "diff", "HEAD", "--", *CODE_PATHS)
     new = _git(root, "ls-files", "--others", "--exclude-standard", "--", *CODE_PATHS).splitlines()
     for f in sorted(new):
-        d += f"\n?? {f} {file_sha256(root / f)}"
+        d += f"\n?? {f} {file_sha256(root / f, cache=False)}"
     return sha256_text(d) if d else None
 
 

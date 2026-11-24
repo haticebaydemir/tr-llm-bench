@@ -3,12 +3,14 @@ import os
 from trbench.provenance import experiment_id, file_sha256, provenance
 
 
-def test_file_sha256_cached_and_invalidated(tmp_path):
+def test_file_sha256_cached_and_invalidated(tmp_path, monkeypatch):
+    monkeypatch.setenv("TRBENCH_CACHE", str(tmp_path / "cache"))
     f = tmp_path / "w.gguf"
     f.write_bytes(b"abc")
     h = file_sha256(f)
     assert h == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-    assert (tmp_path / "w.gguf.sha256").exists() and file_sha256(f) == h
+    assert not (tmp_path / "w.gguf.sha256").exists()          # dosyanin yanina yazilmaz (7q)
+    assert len(list((tmp_path / "cache" / "sha256").glob("*.sha256"))) == 1 and file_sha256(f) == h
     f.write_bytes(b"abcd")                       # boyut degisti -> yeniden hesap
     assert file_sha256(f) != h
     assert file_sha256(tmp_path / "yok") is None
@@ -98,3 +100,15 @@ def test_untracked_results_file_does_not_block(tmp_path):
     root = _repo(tmp_path)
     (root / "results/yeni.jsonl").write_text("{}\n")
     assert require_clean(False, root) is None
+
+
+def test_untracked_code_hash_writes_no_files(tmp_path, monkeypatch):
+    """7q: takip edilmeyen kod dosyasi hash'lenirken hicbir yere .sha256 yazilmaz; sonuc sabit kalir."""
+    from trbench.provenance import code_diff_sha
+    monkeypatch.setenv("TRBENCH_CACHE", str(tmp_path / "cache"))
+    (tmp_path / "r").mkdir()
+    root = _repo(tmp_path / "r")
+    (root / "trbench/yeni.py").write_text("x = 1\n")
+    a, b = code_diff_sha(root), code_diff_sha(root)
+    assert a == b
+    assert not list(root.rglob("*.sha256")) and not (tmp_path / "cache").exists()
