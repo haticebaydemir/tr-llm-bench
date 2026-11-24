@@ -25,7 +25,7 @@ from trbench.eval.analysis import (
 from trbench.eval.pareto import SPEED, TAX, speeds, tr_accuracy
 
 GPU_Q = Path("results/gpu_quality.jsonl")
-GPU_S = Path("results/gpu_llamacpp.jsonl")
+GPU_S = Path("results/gpu_llamacpp_cold.jsonl")   # Faz 7p: onbellek kapali
 TOK = Path("results/tokenizer_tax.csv")
 # GPU olcumundeki ad -> tokenizer_tax.csv etiketi (ayni tokenizer'i paylasanlar ayni etiketi alir)
 TOK_LABEL = {"qwen3-8b": "Qwen3-8B", "qwen3-4b": "Qwen3-8B", "qwen2.5-7b": "Qwen2.5-7B",
@@ -185,7 +185,7 @@ Click a column to sort. <a href="https://github.com/haticebaydemir/tr-llm-bench"
 <p>14 models, llama.cpp on one V100. ± is the 95% interval of Turkish accuracy (about ±5 points):
 neighbouring rows are usually not distinguishable. Category columns are Turkish accuracy.
 Speeds are Turkish, at 8 concurrent requests (Gemma-2: 2; speed measured for 7 models):
-<b>GPU tok/s</b> = raw tokens per second; <b>TR content tok/s</b> = GPU tok/s ÷ tokenizer tax,
+<b>GPU tok/s</b> = raw tokens per second (llama.cpp, Q4_K_M, prompt cache off); <b>TR content tok/s</b> = GPU tok/s ÷ tokenizer tax,
 i.e. English-equivalent tokens of content per second.</p>
 <div class="wrap"><table class="s"><thead><tr><th>Model</th><th>TR %</th><th>EN %</th><th>TR−EN</th>
 <th>Morph.</th><th>Reading</th><th>Math</th><th>Knowl.</th><th>Instr.</th><th>JSON</th>

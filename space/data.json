@@ -12,9 +12,9 @@
    "instruction": 98.3,
    "json": 100.0,
    "tok_tax": 1.395735583472075,
-   "gpu_tps": 43,
-   "gpu_wps": 4,
-   "tr_content_tps": 31
+   "gpu_tps": 39,
+   "gpu_wps": 3,
+   "tr_content_tps": 28
   },
   {
    "model": "qwen3-8b",
@@ -44,9 +44,9 @@
    "instruction": 76.7,
    "json": 100.0,
    "tok_tax": 1.617399213007647,
-   "gpu_tps": 130,
-   "gpu_wps": 47,
-   "tr_content_tps": 81
+   "gpu_tps": 106,
+   "gpu_wps": 39,
+   "tr_content_tps": 66
   },
   {
    "model": "qwen3-4b",
@@ -92,9 +92,9 @@
    "instruction": 70.0,
    "json": 100.0,
    "tok_tax": 1.2140959465614087,
-   "gpu_tps": 109,
-   "gpu_wps": 50,
-   "tr_content_tps": 90
+   "gpu_tps": 95,
+   "gpu_wps": 43,
+   "tr_content_tps": 78
   },
   {
    "model": "llama-3.1-8b",
@@ -108,9 +108,9 @@
    "instruction": 75.0,
    "json": 100.0,
    "tok_tax": 1.3980703509997545,
-   "gpu_tps": 121,
-   "gpu_wps": 51,
-   "tr_content_tps": 87
+   "gpu_tps": 100,
+   "gpu_wps": 42,
+   "tr_content_tps": 71
   },
   {
    "model": "phi-4-mini",
@@ -140,9 +140,9 @@
    "instruction": 66.7,
    "json": 100.0,
    "tok_tax": 1.3980703509997545,
-   "gpu_tps": 122,
-   "gpu_wps": 54,
-   "tr_content_tps": 87
+   "gpu_tps": 102,
+   "gpu_wps": 46,
+   "tr_content_tps": 73
   },
   {
    "model": "trendyol-7b",
@@ -156,9 +156,9 @@
    "instruction": 31.7,
    "json": 50.0,
    "tok_tax": 1.0958789329685363,
-   "gpu_tps": 130,
-   "gpu_wps": 59,
-   "tr_content_tps": 119
+   "gpu_tps": 109,
+   "gpu_wps": 50,
+   "tr_content_tps": 100
   },
   {
    "model": "llama-3.2-3b",
@@ -220,9 +220,9 @@
    "instruction": 31.7,
    "json": 98.0,
    "tok_tax": 2.2080797373999865,
-   "gpu_tps": 127,
-   "gpu_wps": 38,
-   "tr_content_tps": 57
+   "gpu_tps": 97,
+   "gpu_wps": 29,
+   "tr_content_tps": 44
   }
  ],
  "cpu_quant": [

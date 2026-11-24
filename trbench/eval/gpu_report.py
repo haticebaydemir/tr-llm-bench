@@ -136,7 +136,7 @@ def plot(t: pd.DataFrame, path: Path = Path("docs/gpu_content.png")) -> Path:
     fig.suptitle(f"At {int(d['conc'].max())} concurrent requests raw speed is similar, "
                  f"but Turkish content per second differs {hi / lo:.1f}×",
                  x=0.01, ha="left", color=INK, fontsize=12, fontweight="bold")
-    ax.set_title("llama.cpp Q4_K_M on one V100 with an ~8 GB memory budget; median of 3 repeats",
+    ax.set_title("llama.cpp Q4_K_M on one V100 with an ~8 GB memory budget; prompt cache off; median of 3 repeats",
                  loc="left", color=INK2, fontsize=9)
     fig.tight_layout()
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -149,7 +149,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--usd-per-hour", type=float, default=1.0,
                     help="GPU saat fiyati varsayimi; maliyet bununla dogrusal olceklenir")
-    ap.add_argument("--llamacpp-file", default="gpu_llamacpp.jsonl",
+    ap.add_argument("--llamacpp-file", default="gpu_llamacpp_cold.jsonl",
                     help="results/ altindaki llama.cpp dosyasi (orn. gpu_llamacpp_cold.jsonl: onbellek kapali)")
     a = ap.parse_args()
     s = serving([R / a.llamacpp_file, R / "gpu_vllm.jsonl"])
