@@ -67,12 +67,13 @@ memory on that GPU, service included, stayed at 12.9 GB (planned ceiling 15.5 GB
 **Prompt-cache caveat.** Each run repeats the same prompts, and both engines cache prompts by default (vLLM's
 prefix cache; llama-server's per-request `cache_prompt`), so after the first repeat the time to first token is
 largely a cache hit. TTFT values in 2a, 2b and 2d were measured that way and understate a cold first token
-5–8× for llama.cpp. For llama.cpp, throughput is also inflated, by 15–35% at 4–8 requests. Sections 2b
-(*Cold cache*) and 2c re-measure Mistral-7B with the cache off; the 7-model table in 2a was not re-run.
+5–8× for llama.cpp. For llama.cpp, throughput is also inflated, by 15–35% at 4–8 requests. Section 2a and
+2b (*Cold cache*) and 2c are measured with the cache off; the first table in 2b and section 2d are not.
 
 ### 2a. Seven models, llama.cpp, Q4_K_M
 
-Median of 3 repeats. Three speeds, all for Turkish output:
+Median of 3 repeats, **prompt cache off** (`cache_prompt: false` per request, `configs/gpu_llamacpp_cold.yaml`,
+`results/gpu_llamacpp_cold.jsonl`), so every request pays its full prefill. Three speeds, all for Turkish output:
 
 - **TR tok/s**: raw tokens per second, as the engine reports them.
 - **TR words/s (measured)**: words actually generated per second; see note ² before using it.
@@ -84,13 +85,13 @@ Cost assumes **$1 per GPU-hour** (scale linearly to your price) at full load, wi
 
 | Model | c=1 TR tok/s | Top c | TR tok/s | EN tok/s | TR words/s (measured) ² | TR content tok/s | TTFT p50 TR (ms) | GPU 2 peak (GB) | $ per 1k TR words @ $1/h |
 |---|---|---|---|---|---|---|---|---|---|
-| Trendyol-7B | 35 | 8 | 130 | 123 | 59 | **119** | 427 | 10.3 | 0.0040 |
-| Aya-Expanse-8B | 32 | 8 | 109 | 115 | 50 | **90** | 571 | 11.6 | 0.0047 |
-| Cosmos-TR-Llama-8B | 34 | 8 | 122 | 126 | 54 | **87** | 493 | 11.3 | 0.0049 |
-| Llama-3.1-8B | 34 | 8 | 121 | 123 | 51 | **87** | 636 | 12.4 | 0.0049 |
-| Qwen2.5-7B | 34 | 8 | 130 | 130 | 47 | **81** | 249 | 9.9 | 0.0054 |
-| Mistral-7B-v0.3 | 35 | 8 | 127 | 128 | 38 | **57** | 683 | 11.0 | 0.0082 |
-| Gemma-2-9B | 25 | 2 | 43 | 42 | 4 | **31** | 531 | 12.9 | 0.0139 |
+| Trendyol-7B | 35 | 8 | 109 | 110 | 50 | **100** | 3954 | 9.7 | 0.0047 |
+| Aya-Expanse-8B | 31 | 8 | 95 | 97 | 43 | **78** | 3956 | 10.4 | 0.0054 |
+| Cosmos-TR-Llama-8B | 33 | 8 | 102 | 107 | 46 | **73** | 4027 | 10.0 | 0.0058 |
+| Llama-3.1-8B | 33 | 8 | 100 | 105 | 42 | **71** | 4324 | 12.4 | 0.0060 |
+| Qwen2.5-7B | 34 | 8 | 106 | 114 | 39 | **66** | 3734 | 9.0 | 0.0066 |
+| Mistral-7B-v0.3 | 34 | 8 | 97 | 112 | 29 | **44** | 4764 | 9.7 | 0.0107 |
+| Gemma-2-9B | 24 | 2 | 39 | 40 | 3 | **28** | 1547 | 12.9 | 0.0152 |
 
 ² *Measured words/s is not a content measure in this setup.* Every request is forced to 256 output tokens
 (`min_tokens` + `ignore_eos`), so generation continues after the model's natural answer ends, and what it
@@ -100,9 +101,12 @@ Trendyol-7B keeps writing, sometimes in a loop. Use content tok/s, not measured 
 
 ![Turkish content per second on GPU](docs/gpu_content.png)
 
-- **Same engine, same GPU, similar raw speed (121–130 tok/s at 8 concurrent requests), yet Turkish
-  content per second ranges from 57 to 119.** The tokenizer, not the model size, decides how much
-  Turkish a GPU-hour buys: Mistral-7B costs about twice as much per Turkish word as Trendyol.
+- **Same engine, same GPU, similar raw speed (95–109 tok/s at 8 concurrent requests), yet Turkish
+  content per second ranges from 44 to 100.** The tokenizer, not the model size, decides how much
+  Turkish a GPU-hour buys: Mistral-7B costs 2.3× as much per Turkish word as Trendyol.
+- **The prompt cache had hidden part of this.** The earlier run with llama-server's default cache gave 121–130
+  tok/s and 57–119 content tok/s. Turning it off costs 8–23% of Turkish throughput, the most for Mistral-7B
+  (127 → 97 tok/s), the model with the highest tokenizer tax, so the spread between models widens.
 - Gemma-2-9B runs at 2 concurrent requests: its KV cache (~344 KB per token) does not fit 8 in the budget.
 - Trendyol's tax is taken as 1.10: the FLORES+ value with the fast tokenizer, and also what llama.cpp's own
   tokenizer (which served the model) gives on the eval prompts (see note ¹ in section 1).
@@ -474,8 +478,8 @@ tax is paid again in long contexts.
 ## Summary
 
 For a Turkish user of open 7–9B models: the engine serves Turkish as fast as English in
-tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (57 to 119
-content tok/s on the same GPU, a 2× cost difference per Turkish word) and, in our 8 GB-budget vLLM
+tokens, but the tokenizer decides how much Turkish content a GPU-hour delivers (44 to 100
+content tok/s on the same GPU with the prompt cache off, a 2.3× cost difference per Turkish word) and, in our 8 GB-budget vLLM
 runs with Mistral-7B, how long users wait for the first token (1.4–1.7× longer in Turkish with Mistral-7B on vLLM, cache off,
 and equal once prompts have the same token count); quantization down to Q4_K_M costs Turkish no more than English in any of
 seven models, and neither does a q8_0 or q4_0 KV cache; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
@@ -509,8 +513,8 @@ closed-loop load (a new request starts when one finishes), fixed 256-token outpu
 
 **Not generalizable from these data:**
 - Absolute speeds, the engine ranking and the TTFT numbers beyond a V100 with ~8 GB.
-- TTFT values in sections 2a, 2b (first table) and 2d, and llama.cpp throughput in 2a (prompt caches on,
-  repeated prompts); only 2b *Cold cache* and 2c measure a cold first token, for Mistral-7B only.
+- TTFT and llama.cpp throughput in the first table of 2b and in 2d (prompt caches on, repeated prompts); 2a,
+  2b *Cold cache* and 2c are measured cold.
 - Models above 9B, fp16/Q8 serving, high concurrency and open-loop (arrival-rate) traffic.
 - Per-category differences: with 40–60 items per category the intervals are wide (up to ±18 points for knowledge).
 
@@ -539,7 +543,7 @@ python -m trbench.tokenizer_tax.fertility
 python -m trbench.eval.build
 bash scripts/phase4_cpu.sh Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b
 python -m trbench.eval.analysis --model qwen2.5-7b
-# GPU (on the server): bash scripts/gpu_bench.sh configs/gpu_llamacpp.yaml, then
+# GPU (on the server): bash scripts/gpu_bench.sh configs/gpu_llamacpp_cold.yaml, then
 python -m trbench.eval.gpu_report
 ```
 
