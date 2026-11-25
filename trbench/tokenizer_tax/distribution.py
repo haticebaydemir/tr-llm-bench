@@ -56,6 +56,11 @@ def spearman(x: list[float], y: list[float]) -> float:
     return float(np.corrcoef(rx, ry)[0, 1])
 
 
+def _ratio(tr: pd.Series, en: pd.Series) -> float | None:
+    """Alt kume bossa None (orn. yalnizca dev cumleleri olan kucuk test verisi)."""
+    return float(tr.sum() / en.sum()) if len(en) else None
+
+
 def analyse(counts: pd.DataFrame, vocab: dict[str, int]) -> dict:
     w = wide(counts)
     groups = identical_groups(w)
@@ -80,8 +85,8 @@ def analyse(counts: pd.DataFrame, vocab: dict[str, int]) -> dict:
             "tr_cheaper_share": float((tr < en).mean()),
             "by_length": by_len,
             "tr_vs_fi_hu": float(tr.sum() / ((g[FI].sum() + g[HU].sum()) / 2)),
-            "dev": float(tr[dev].sum() / en[dev].sum()),
-            "devtest": float(tr[test].sum() / en[test].sum()),
+            "dev": _ratio(tr[dev], en[dev]),
+            "devtest": _ratio(tr[test], en[test]),
         })
     rows.sort(key=lambda r: r["tax"])
     v = [r for r in rows if r["vocab"]]
@@ -91,8 +96,13 @@ def analyse(counts: pd.DataFrame, vocab: dict[str, int]) -> dict:
         "n_sent": len(length), "length_edges": edges, "rows": rows,
         "spearman_vocab_tax": spearman([r["vocab"] for r in v], [r["tax"] for r in v]),
         "spearman_vocab_tr_vs_fi_hu": spearman([r["vocab"] for r in v], [r["tr_vs_fi_hu"] for r in v]),
-        "max_split_gap": max(abs(r["dev"] - r["devtest"]) for r in rows),
+        "max_split_gap": max((abs(r["dev"] - r["devtest"]) for r in rows
+                              if r["dev"] is not None and r["devtest"] is not None), default=None),
     }
+
+
+def _fmt(x: float | None, nd: int = 2) -> str:
+    return "–" if x is None else f"{x:.{nd}f}"
 
 
 def to_md(a: dict) -> str:
@@ -107,7 +117,7 @@ def to_md(a: dict) -> str:
     for r in a["rows"]:
         out.append(f"| {r['tokenizer']} | {r['vocab'] or '–'} | {r['tax']:.2f} | {r['median']:.2f} | "
                    f"{r['p10']:.2f}–{r['p90']:.2f} | {r['tr_cheaper_share']:.0%} | "
-                   f"{r['tr_vs_fi_hu']:.2f} | {r['dev']:.2f} | {r['devtest']:.2f} |")
+                   f"{r['tr_vs_fi_hu']:.2f} | {_fmt(r['dev'])} | {_fmt(r['devtest'])} |")
     out += ["", "### Tax by sentence length (EN tokens, median across tokenizers)", "",
             "| Tokenizer | " + " | ".join(bins) + " |", "|---" * (len(bins) + 1) + "|"]
     for r in a["rows"]:
@@ -115,7 +125,7 @@ def to_md(a: dict) -> str:
     out += ["", (f"Spearman(vocab, tax) = {a['spearman_vocab_tax']:+.2f}; "
             f"Spearman(vocab, TR / mean(FI, HU)) = {a['spearman_vocab_tr_vs_fi_hu']:+.2f} "
             f"(n = {a['n_independent']})."),
-            f"Largest dev/devtest gap in the tax: {a['max_split_gap']:.3f}."]
+            f"Largest dev/devtest gap in the tax: {_fmt(a['max_split_gap'], 3)}."]
     return "\n".join(out)
 
 
