@@ -219,6 +219,40 @@ Median of 3 repeats per cell; the GPU is shared, and single repeats occasionally
 - Decoding with 4,096 tokens already in context is 7–10% slower (Gemma: 14%). Since Turkish needs
   1.1–2.2× more tokens for the same text, it reaches that point sooner.
 
+### 2d+. Context window tax (same content, EN vs TR length)
+
+The same text takes tax× more tokens in Turkish, so we measured each model at the English
+length E and the Turkish length E × tax (llama-bench, Q4_K_M, GPU, median of 3). Gemma-2-9B
+only at E = 1,024: longer Turkish contexts do not fit the 7.5 GB budget.
+Data: `results/gpu_context.jsonl`, table: `python -m trbench.eval.context_tax`.
+
+Content of 4,096 English tokens:
+
+| Model | Tax | TR tokens | KV cache EN / TR (MB) | Content that fits an 8,192-token window (EN tokens) | Decode tok/s EN / TR | Change | Prefill EN / TR (s) |
+|---|---|---|---|---|---|---|---|
+| Trendyol-7B | 1.10 | 4,489 | 512 / 561 | 7,475 | 34.9 / 34.8 | -0% | 5.8 / 6.5 |
+| Aya-Expanse-8B | 1.21 | 4,973 | 512 / 622 | 6,747 | 31.0 / 30.7 | -1% | 5.8 / 7.3 |
+| Cosmos-TR-Llama-8B | 1.40 | 5,726 | 512 / 716 | 5,860 | 33.3 / 32.7 | -2% | 5.8 / 8.7 |
+| Llama-3.1-8B | 1.40 | 5,726 | 512 / 716 | 5,860 | 33.3 / 32.7 | -2% | 5.8 / 8.7 |
+| Qwen2.5-7B | 1.62 | 6,625 | 224 / 362 | 5,065 | 33.6 / 31.5 | -6% | 5.4 / 9.3 |
+| Mistral-7B-v0.3 | 2.21 | 9,044 | 512 / 1,130 | 3,710 | 35.5 / 33.0 | -7% | 5.8 / 14.3 |
+
+At 1,024 English tokens the pattern is the same and smaller (decode -0% to -3%; Gemma-2-9B:
+26.4 / 25.9 tok/s, -2%, prefill 1.9 / 2.8 s).
+
+- **The window is the biggest cost.** An 8,192-token window holds 3,710 English tokens' worth of
+  Turkish content with Mistral-7B and 7,475 with Trendyol-7B. Long-document and RAG prompts hit
+  the limit tax× sooner.
+- **Prefill grows at least in proportion to the tax.** Mistral-7B reads the same content 2.5×
+  slower in Turkish (14.3 vs 5.8 s), slightly more than its 2.21× token ratio, because attention
+  cost grows with length. This adds directly to time to first token.
+- **KV memory grows by the tax** (Mistral: 1.1 GB instead of 0.5 GB per 4K-token request), which
+  means fewer concurrent requests on the same GPU.
+- **Per-token decode barely changes** (0–7%). The decode cost of Turkish is mostly in needing more
+  tokens (section 2a), not in each token being slower.
+- Cosmos-TR-Llama-8B and Llama-3.1-8B give identical numbers: same architecture, tokenizer and
+  file size, so the same work.
+
 ### 2e. Earlier run on an exclusive GPU (historical)
 
 Qwen2.5-7B-Instruct, vLLM, one V100 32 GB, 256 output tokens per request, median of 3 repeats.
@@ -488,6 +522,10 @@ and equal once prompts have the same token count); quantization down to Q4_K_M c
 seven models, and neither does a q8_0 or q4_0 KV cache; across fourteen models, Turkish accuracy ranges from 48% to 90% and does not follow
 model size (4B Gemma-3 and Qwen3 beat several 8B models); and the remaining quality gap lies in the base model (small for Gemma-2-9B,
 large for Llama-3.1-8B and Mistral-7B), partly inflated by translated benchmarks.
+
+The same tax shrinks the context window: an 8,192-token window holds 3,710 to 7,475 English
+tokens' worth of Turkish content, and prefill for the same content takes up to 2.5× longer, while
+per-token decode slows by only 0–7%.
 
 Data-quality notes found while inspecting failures: translationese in Belebele-TR,
 meaning errors in GSM8K-TR, term errors in Global-MMLU-TR.

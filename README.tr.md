@@ -229,6 +229,40 @@ Hücre başına 3 tekrarın medyanı; GPU paylaşımlı ve tek tek tekrarlar ara
 - Bağlamda zaten 4.096 token varken üretim %7–10 daha yavaş (Gemma: %14). Türkçe aynı metin için
   1,1–2,2 kat daha fazla token gerektirdiğinden bu noktaya daha erken ulaşıyor.
 
+### 2d+. Bağlam penceresi vergisi (aynı içerik, EN ve TR uzunluğunda)
+
+Aynı metin Türkçede vergi katı kadar fazla token tutuyor. Bu yüzden her modeli İngilizce
+uzunlukta (E) ve Türkçe uzunlukta (E × vergi) ölçtük (llama-bench, Q4_K_M, GPU, 3 tekrarın
+medyanı). Gemma-2-9B yalnızca E = 1.024'te ölçüldü: daha uzun Türkçe bağlam 7,5 GB'lık bütçeye
+sığmıyor. Veri: `results/gpu_context.jsonl`, tablo: `python -m trbench.eval.context_tax`.
+
+4.096 İngilizce token'lık içerik:
+
+| Model | Vergi | TR token | KV önbelleği EN / TR (MB) | 8.192 token'lık pencereye sığan içerik (EN token) | Üretim tok/s EN / TR | Değişim | Prefill EN / TR (sn) |
+|---|---|---|---|---|---|---|---|
+| Trendyol-7B | 1,10 | 4.489 | 512 / 561 | 7.475 | 34,9 / 34,8 | −%0 | 5,8 / 6,5 |
+| Aya-Expanse-8B | 1,21 | 4.973 | 512 / 622 | 6.747 | 31,0 / 30,7 | −%1 | 5,8 / 7,3 |
+| Cosmos-TR-Llama-8B | 1,40 | 5.726 | 512 / 716 | 5.860 | 33,3 / 32,7 | −%2 | 5,8 / 8,7 |
+| Llama-3.1-8B | 1,40 | 5.726 | 512 / 716 | 5.860 | 33,3 / 32,7 | −%2 | 5,8 / 8,7 |
+| Qwen2.5-7B | 1,62 | 6.625 | 224 / 362 | 5.065 | 33,6 / 31,5 | −%6 | 5,4 / 9,3 |
+| Mistral-7B-v0.3 | 2,21 | 9.044 | 512 / 1.130 | 3.710 | 35,5 / 33,0 | −%7 | 5,8 / 14,3 |
+
+1.024 İngilizce token'da desen aynı, etki daha küçük (üretim −%0 ile −%3 arası; Gemma-2-9B:
+26,4 / 25,9 tok/s, −%2, prefill 1,9 / 2,8 sn).
+
+- **En büyük maliyet pencere.** 8.192 token'lık pencere, Mistral-7B ile ancak 3.710 İngilizce
+  token'a denk Türkçe içerik alıyor; Trendyol-7B ile 7.475. Uzun belge ve RAG prompt'ları sınıra
+  vergi katı kadar erken ulaşıyor.
+- **Prefill en az vergi oranında büyüyor.** Mistral-7B aynı içeriği Türkçede 2,5 kat yavaş
+  okuyor (14,3 ve 5,8 sn); bu 2,21'lik token oranından biraz fazla, çünkü dikkat (attention)
+  maliyeti uzunlukla artıyor. Bu fark doğrudan ilk token süresine ekleniyor.
+- **KV belleği vergi oranında büyüyor** (Mistral: 4K token'lık istek başına 0,5 GB yerine 1,1 GB).
+  Aynı GPU'da daha az eşzamanlı istek demek.
+- **Token başına üretim hızı neredeyse değişmiyor** (%0–7). Türkçenin üretim maliyeti büyük ölçüde
+  daha fazla token gerektirmesinden geliyor (bölüm 2a), token'ların tek tek yavaşlamasından değil.
+- Cosmos-TR-Llama-8B ve Llama-3.1-8B aynı sayıları veriyor: mimari, tokenizer ve dosya boyutu aynı,
+  yani yapılan iş de aynı.
+
 ### 2e. Özel (paylaşımsız) bir GPU'da önceki koşu (tarihsel)
 
 Qwen2.5-7B-Instruct, vLLM, tek bir 32 GB V100, istek başına 256 çıktı token'ı, 3 tekrarın medyanı.
@@ -500,6 +534,10 @@ token sayısına getirilince eşit). Q4_K_M'e kadar kuantizasyon yedi modelin hi
 Türkçe doğruluk %48 ile %90 arasında değişiyor ve model boyutunu izlemiyor (4B Gemma-3 ve Qwen3, birkaç
 8B modeli geçiyor). Geriye kalan kalite farkı temel modelde (Gemma-2-9B'de küçük, Llama-3.1-8B ve
 Mistral-7B'de büyük) ve kısmen çeviri benchmark'larıyla şişiyor.
+
+Aynı vergi bağlam penceresini de daraltıyor: 8.192 token'lık pencere 3.710 ile 7.475 İngilizce
+token'a denk Türkçe içerik alıyor ve aynı içeriğin prefill'i 2,5 kata kadar uzuyor; token başına
+üretim ise yalnızca %0–7 yavaşlıyor.
 
 Hataları incelerken bulunan veri kalitesi notları: Belebele-TR'de çeviri kokan dil, GSM8K-TR'de
 anlam hataları, Global-MMLU-TR'de terim hataları.
