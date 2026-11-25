@@ -163,7 +163,11 @@ def main() -> None:
     for m, r in t.iterrows():
         print(f"| {SHOW[m]} | {r.c1_tr:.0f} | {int(r.conc)} | {r.top_tr:.0f} | {r.top_en:.0f} | "
               f"{r.wps_tr:.0f} | **{r.content:.0f}** | {r.ttft_tr:.0f} | {r.peak_gb:.1f} | {r.usd_per_1k_words:.4f} |")
-    e = engine_table(s)
+    # Motor karsilastirmasi: iki motor ayni onbellek durumunda olmali. gpu_vllm.jsonl onbellek
+    # acikken olculdu, bu yuzden llama.cpp tarafi da onbellek acik dosyadan (README 2b ilk tablo).
+    # Onbellek kapali karsilastirma: README 2b "Cold cache" (gpu_llamacpp_cold + gpu_6d_mnbt).
+    e = engine_table(serving([R / "gpu_llamacpp.jsonl", R / "gpu_vllm.jsonl"]))
+    print("\nEngine comparison, both engines with prompt caches on (default settings):")
     print("\n| Concurrency | Lang | llama.cpp tok/s | vLLM tok/s | vLLM vs llama.cpp | "
           "TTFT p50 llama.cpp / vLLM (ms) |")
     print("|---|---|---|---|---|---|")

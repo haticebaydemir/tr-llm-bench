@@ -34,3 +34,4 @@ data/flores/
 !results/phase4_scores.jsonl
 !results/cpu_speed.jsonl
 !results/tokenizer_trendyol.csv
+repro/
