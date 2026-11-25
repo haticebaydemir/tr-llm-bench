@@ -19,7 +19,16 @@ import random
 from collections import defaultdict
 from pathlib import Path
 
-RESULTS = Path("results/phase4.jsonl")
+RESULTS_FULL = Path("results/phase4.jsonl")          # yerel, cevap metinleriyle (git'te yok)
+RESULTS_PUBLIC = Path("results/phase4_scores.jsonl")  # repoda: cevap metni yok (trbench.eval.export_cpu)
+
+
+def cpu_results() -> Path:
+    """Tam dosya varsa onu, yoksa repodaki puan dosyasini kullan (sayilar ayni)."""
+    return RESULTS_FULL if RESULTS_FULL.exists() else RESULTS_PUBLIC
+
+
+RESULTS = cpu_results()
 PAIRED = ("reading", "knowledge", "math", "instruction", "json")
 BASE = "fp16"
 

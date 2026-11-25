@@ -30,3 +30,7 @@ data/flores/
 # Faz 7q: eski hash onbellekleri (artik repo disinda tutuluyor)
 *.sha256
 !results/gpu_context.jsonl
+# Faz 8h: CPU sonuclari (cevap metni cikarilmis) ve CPU hizlari
+!results/phase4_scores.jsonl
+!results/cpu_speed.jsonl
+!results/tokenizer_trendyol.csv

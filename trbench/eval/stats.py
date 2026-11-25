@@ -29,14 +29,14 @@ from collections import defaultdict
 from itertools import combinations
 from pathlib import Path
 
-from trbench.eval.analysis import BASE, PAIRED, TRANSLATION_ERRORS, paired_ids
+from trbench.eval.analysis import BASE, PAIRED, TRANSLATION_ERRORS, cpu_results, paired_ids
 from trbench.eval.analysis import load as load_cpu
 from trbench.eval.analysis import table as cpu_table
 from trbench.eval.gpu_quality_report import load
 from trbench.eval.kv_report import tables as kv_tables
 
 KV = Path("results/gpu_kvcache.jsonl")
-CPU = Path("results/phase4.jsonl")
+CPU = cpu_results()
 GPU = Path("results/gpu_quality.jsonl")
 N_BOOT = 4000
 ALPHA = 0.05

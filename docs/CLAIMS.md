@@ -19,7 +19,7 @@ tested directly · *gap* = evidence missing or weaker than the wording.
 | T5 | The cost depends on how much Turkish the tokenizer saw in training | T3 + T4; Kumru (Turkish-focused) 0.64 | Training mixtures are not published for most tokenizers | interpreted |
 | T6 | The tax falls slightly with sentence length (Mistral-7B 2.35 → 2.08) | same as T2 | Cause (names, numbers in short sentences) not tested | observed, cause interpreted |
 | T7 | The result does not depend on one part of the corpus (dev vs devtest differ by ≤ 0.018) | same as T2 | Same corpus, same domains | observed |
-| T8 | The same tokenizer file gives 1.10 / 1.12 / 1.22 for Trendyol depending on the library version | README §1 note ¹ | Only Trendyol checked | observed — **gap:** no result file or script for the three values |
+| T8 | The same tokenizer file gives 1.10 / 1.12 / 1.22 for Trendyol depending on the library version | `tokenizer_trendyol.csv` · `trbench.tokenizer_tax.trendyol_versions` | transformers 4.57.3: fast 1.096, slow 1.121 (same revision 948c5c1). The 1.22 came from an older transformers version and is not reproduced in the file | observed for 1.10 / 1.12; 1.22 historical |
 
 ## Serving (V100, ~8 GB budget)
 
@@ -38,7 +38,7 @@ tested directly · *gap* = evidence missing or weaker than the wording.
 
 | # | Claim | Evidence | Limit | Status |
 |---|---|---|---|---|
-| Q1 | No Turkish-specific loss from Q8_0 / Q4_K_M weights in 7 models; losses above 3.3 (Q8_0) / 5.4 (Q4_K_M) points are excluded | `results/phase4.jsonl` · `trbench.eval.stats` · ebee503 | 242 pairs; CPU llama.cpp b12470 | observed — **gap:** `phase4.jsonl` is git-ignored and not in the repository; the main quantization claim cannot be rebuilt from the repo |
+| Q1 | No Turkish-specific loss from Q8_0 / Q4_K_M weights in 7 models; losses above 3.3 (Q8_0) / 5.4 (Q4_K_M) points are excluded | `results/phase4.jsonl` · `trbench.eval.stats` · ebee503 | 242 pairs; CPU llama.cpp b12470 | observed — data: `phase4_scores.jsonl` (model answers removed, `trbench.eval.export_cpu`) |
 | Q2 | Q8_0 KV cache: no change (loss ≤ 2.9 points excluded); q4_0: no consistent loss, Llama-3.1-8B the exception (+5.8 [+0.4, +11.2]) | `gpu_kvcache.jsonl` · `trbench.eval.kv_report`, `trbench.eval.stats` · dcee413 | 5 models; equivalence only defensible for q8_0 (TOST margin ±1.7–5.0) | observed |
 | Q3 | Turkish accuracy ranges 48–90% across 14 models and does not follow size | `gpu_quality.jsonl` · `trbench.eval.gpu_quality_report` · afde675 | Q4_K_M, greedy, one run | observed |
 | Q4 | Models fall into 3 tiers in Turkish (Holm-corrected McNemar); in English 9 models share the top tier | same as Q3 · `trbench.eval.stats` · ebee503 | Tiers overlap by construction (greedy from the top) | observed |
@@ -46,14 +46,12 @@ tested directly · *gap* = evidence missing or weaker than the wording.
 | Q6 | The TR gap is not only a benchmark artefact: 9 of 14 models also trail on original items | `gpu_quality.jsonl` · `trbench.eval.breakdown`, `trbench.eval.contamination` · 795e141 | Public and original items test different skills | observed |
 | Q7 | The gap is larger on public benchmarks, partly from translation errors and possibly contamination | same as Q6; 8 confirmed errors | Cannot separate translation, contamination and difficulty | interpreted |
 | Q8 | 8 of 38 TR-wrong / EN-right items are translation errors | `TRANSLATION_ERRORS` in `analysis.py`; HF `errata.jsonl` | Only Qwen2.5-7B fp16 failures reviewed; one annotator | observed |
-| Q9 | GPU and CPU give the same right/wrong result on 94–99% of items | `gpu_quality.jsonl` + `phase4.jsonl` · `trbench.eval.gpu_quality_report` | **gap:** needs `phase4.jsonl` (see Q1) | observed |
-| Q10 | Pareto front on CPU: Gemma-2-9B, Aya-Expanse-8B, Trendyol-7B Q4_K_M | `trbench.eval.pareto` | **gap:** needs `phase4.jsonl` and CPU speed results, neither in the repository | observed |
+| Q9 | GPU and CPU give the same right/wrong result on 94–99% of items | `gpu_quality.jsonl` + `phase4.jsonl` · `trbench.eval.gpu_quality_report` | `phase4_scores.jsonl` | observed |
+| Q10 | Pareto front on CPU: Gemma-2-9B, Aya-Expanse-8B, Trendyol-7B Q4_K_M | `trbench.eval.pareto` | `phase4_scores.jsonl`, `cpu_speed.jsonl` | observed |
 | Q11 | Q4_K_M costs at most 1 point of Turkish accuracy in every model (README §4) | `phase4.jsonl` · `trbench.eval.stats` | Point estimate only; the excluded loss is up to 5.4 points | fixed — README §4 reworded with Q1's bound |
 
 ## Open items found by this matrix
 
-1. **`results/phase4.jsonl` is not in the repository** (git-ignored), but Q1, Q9 and Q10 rest on it.
-   Add it to `.gitignore`'s allow-list (11 MB; or gzip) — it holds model answers to public items, so check
-   that answers do not reproduce third-party question text before publishing.
-2. T8 (tokenizer version 1.10 / 1.12 / 1.22) has no result file or script.
-3. Q5, Q11: README fixed; the leaderboard and blog still need the tier wording.
+All closed. The CPU results are published as `results/phase4_scores.jsonl` without model answers
+(`response`, `raw_response`), so no third-party question text is redistributed; analyses use the
+full local file when present and this file otherwise. Model tiers are on the leaderboard.

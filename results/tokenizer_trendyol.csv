@@ -1,0 +1,3 @@
+transformers,tokenizers,revision,use_fast,class,vocab,tr_tokens,en_tokens,ratio,error
+4.57.3,0.22.2,948c5c1be299d6914952852fabe79abcc6aad76d,True,LlamaTokenizerFast,44312,64087,58480,1.0959,
+4.57.3,0.22.2,948c5c1be299d6914952852fabe79abcc6aad76d,False,LlamaTokenizer,44312,65547,58483,1.1208,

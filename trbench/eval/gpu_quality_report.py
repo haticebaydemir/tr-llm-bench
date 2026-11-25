@@ -13,11 +13,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from trbench.eval.analysis import TRANSLATION_ERRORS
+from trbench.eval.analysis import TRANSLATION_ERRORS, cpu_results
 from trbench.results import pick
 
 GPU = Path("results/gpu_quality.jsonl")
-CPU = Path("results/phase4.jsonl")
+CPU = cpu_results()
 
 
 def load(path: Path) -> list[dict]:

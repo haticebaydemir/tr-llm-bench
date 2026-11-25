@@ -35,3 +35,15 @@ def test_gpu_board_accuracy_ci_categories_and_content_speed():
     assert (r["tr"], r["en"], r["math"], r["morph"]) == (75.0, 90.0, 75.0, 100.0)
     assert r["tr_ci"] == 19.0                     # 1.96*sqrt(.75*.25/20)
     assert r["gpu_tps"] == 130 and r["tr_content_tps"] == 81     # medyan(120,130,500)=130 /1.6
+
+
+def test_gpu_board_tiers():
+    from trbench.eval.report import gpu_board
+    q = []
+    for m, right in (("good", 60), ("good2", 58), ("bad", 20)):
+        for i in range(60):
+            for lang in ("tr", "en"):
+                q.append({"label": f"{m}/q4_k_m", "id": f"math/{i}", "lang": lang, "category": "math",
+                          "correct": i < right})
+    t = {r["model"]: (r["tier_tr"], r["tier_en"]) for r in gpu_board(q, [], {})}
+    assert t == {"good": (1, 1), "good2": (1, 1), "bad": (2, 2)}
