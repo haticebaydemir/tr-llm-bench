@@ -8,6 +8,7 @@ Her modul ayri calisir; biri hata verirse digerleri devam eder, sonda ozet ve ci
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -34,7 +35,8 @@ def main() -> int:
     for m in MODULES:
         name = m.split()[0].rsplit(".", 1)[1]
         r = subprocess.run([sys.executable, "-m", *m.split()], capture_output=True, text=True, check=False,
-                           encoding="utf-8")
+                           encoding="utf-8", errors="replace",
+                           env={**os.environ, "PYTHONIOENCODING": "utf-8"})  # Windows: cp1254 degil
         (OUT / f"{name}.md").write_text(r.stdout, encoding="utf-8")
         status = "ok" if r.returncode == 0 else f"HATA ({r.returncode})"
         print(f"{status:10} {m}")
