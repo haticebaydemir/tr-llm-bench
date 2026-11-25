@@ -42,13 +42,13 @@ tested directly · *gap* = evidence missing or weaker than the wording.
 | Q2 | Q8_0 KV cache: no change (loss ≤ 2.9 points excluded); q4_0: no consistent loss, Llama-3.1-8B the exception (+5.8 [+0.4, +11.2]) | `gpu_kvcache.jsonl` · `trbench.eval.kv_report`, `trbench.eval.stats` · dcee413 | 5 models; equivalence only defensible for q8_0 (TOST margin ±1.7–5.0) | observed |
 | Q3 | Turkish accuracy ranges 48–90% across 14 models and does not follow size | `gpu_quality.jsonl` · `trbench.eval.gpu_quality_report` · afde675 | Q4_K_M, greedy, one run | observed |
 | Q4 | Models fall into 3 tiers in Turkish (Holm-corrected McNemar); in English 9 models share the top tier | same as Q3 · `trbench.eval.stats` · ebee503 | Tiers overlap by construction (greedy from the top) | observed |
-| Q5 | Gemma-2-9B leads in Turkish | same as Q3 | **Not significant** against Qwen3-8B (89.7% vs 81.4%, Holm) | gap — wording must say "shares the top tier" |
+| Q5 | Gemma-2-9B leads in Turkish | same as Q3 | **Not significant** against Qwen3-8B (89.7% vs 81.4%, Holm) | fixed — README now says Gemma-2-9B and Qwen3-8B share the top tier |
 | Q6 | The TR gap is not only a benchmark artefact: 9 of 14 models also trail on original items | `gpu_quality.jsonl` · `trbench.eval.breakdown`, `trbench.eval.contamination` · 795e141 | Public and original items test different skills | observed |
 | Q7 | The gap is larger on public benchmarks, partly from translation errors and possibly contamination | same as Q6; 8 confirmed errors | Cannot separate translation, contamination and difficulty | interpreted |
 | Q8 | 8 of 38 TR-wrong / EN-right items are translation errors | `TRANSLATION_ERRORS` in `analysis.py`; HF `errata.jsonl` | Only Qwen2.5-7B fp16 failures reviewed; one annotator | observed |
 | Q9 | GPU and CPU give the same right/wrong result on 94–99% of items | `gpu_quality.jsonl` + `phase4.jsonl` · `trbench.eval.gpu_quality_report` | **gap:** needs `phase4.jsonl` (see Q1) | observed |
 | Q10 | Pareto front on CPU: Gemma-2-9B, Aya-Expanse-8B, Trendyol-7B Q4_K_M | `trbench.eval.pareto` | **gap:** needs `phase4.jsonl` and CPU speed results, neither in the repository | observed |
-| Q11 | Q4_K_M costs at most 1 point of Turkish accuracy in every model (README §4) | `phase4.jsonl` · `trbench.eval.stats` | Point estimate only; the excluded loss is up to 5.4 points | **gap** — reword with Q1's bound |
+| Q11 | Q4_K_M costs at most 1 point of Turkish accuracy in every model (README §4) | `phase4.jsonl` · `trbench.eval.stats` | Point estimate only; the excluded loss is up to 5.4 points | fixed — README §4 reworded with Q1's bound |
 
 ## Open items found by this matrix
 
@@ -56,7 +56,4 @@ tested directly · *gap* = evidence missing or weaker than the wording.
    Add it to `.gitignore`'s allow-list (11 MB; or gzip) — it holds model answers to public items, so check
    that answers do not reproduce third-party question text before publishing.
 2. T8 (tokenizer version 1.10 / 1.12 / 1.22) has no result file or script.
-3. Q11: README §4 "costs at most 1 point" → "point estimates within ±1.2; losses above 5.4 points excluded".
-4. Q5: README and leaderboard wording "Gemma-2-9B first" → "Gemma-2-9B and Qwen3-8B share the top tier".
-5. The Closing section of the roadmap still lists pre-7p numbers (57–119 content tok/s, 2× cost per word,
-   "Turkish TTFT 2.5 s"); current values are S1, S2 and S4.
+3. Q5, Q11: README fixed; the leaderboard and blog still need the tier wording.

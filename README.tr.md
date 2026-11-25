@@ -382,6 +382,10 @@ değerinin %95 aralığı yaklaşık ±5 puan; yani tabloda yan yana duran model
 
 - **GPU ve CPU aynı sonucu veriyor.** İkisinde de ölçülen yedi modelde maddelerin %94–99'u aynı
   doğru/yanlış sonucunu alıyor ve doğruluk en fazla 2 puan oynuyor: kalite sonuçları backend'e bağlı değil.
+- **Türkçede üç kademe, İngilizcede tek kademe.** Aynı maddeler üzerinde eşleştirilmiş testler (exact McNemar,
+  Holm düzeltmeli, `python -m trbench.eval.stats`) modelleri Türkçede üç kademeye ayırıyor: en üstte Gemma-2-9B
+  ve Qwen3-8B (%90 ile %81 arasındaki fark anlamlı değil), %70–79 arasında yedi model, %48–51 arasında beş model.
+  İngilizcede dokuz model aynı kademede.
 - **Türkçede belirleyici olan boyut değil.** Gemma-3-4B ve Qwen3-4B, 8B modellerle (Llama-3.1, Cosmos)
   aynı seviyede ya da onlardan iyi; Granite-3.3-8B ve Ministral-8B ise İngilizceden Türkçeye geçince 34–37
   puan kaybediyor.
@@ -504,7 +508,8 @@ Q4_K_M, her modelin en hızlı ayarı:
 | Trendyol-7B v1.8 | 12,5 | 11,3 | 50 |
 | Mistral-7B-v0.3 | 13,0 | 5,9 | 46 |
 
-- **Q4_K_M her modelde Türkçe doğruluktan en fazla 1 puan götürüyor** ve modelin en hızlı ayarı.
+- **Q4_K_M hiçbir modelde Türkçe doğrulukta ölçülebilir kayıp yaratmıyor** (nokta tahminleri 1,2 puan
+  içinde; 5,4 puandan büyük kayıp dışlanabiliyor, `python -m trbench.eval.stats`) ve modelin en hızlı ayarı.
 - **En doğru model Gemma-2-9B Q4_K_M; kalite–hız Pareto frontier'ındaki diğer noktalar Aya-Expanse-8B ve
   Trendyol-7B Q4_K_M** (%76 doğrulukla saniyede 9,0 Türkçe content token'ı, ve %50 doğrulukla saniyedeki en
   yüksek Türkçe içerik, 11,3).
